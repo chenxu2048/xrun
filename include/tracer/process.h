@@ -3,12 +3,13 @@
 
 #include "lib/list.h"
 
-struct xr_process_s;
-struct xr_thread_s;
+typedef struct xr_thread_s xr_thread_t;
+typedef struct xr_process_s xr_process_t;
 
 struct xr_process_s {
   int pid;
 
+  xr_list_t processes;
   xr_list_t threads;
 };
 
@@ -17,7 +18,5 @@ struct xr_thread_s {
 
   xr_list_t threads;
 };
-
-typedef struct xr_thread_s xr_thread_t;
 
 #endif

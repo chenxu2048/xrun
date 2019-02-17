@@ -19,7 +19,7 @@ struct xr_list_head_s {
 typedef struct xr_list_head_s xr_list_head_t;
 
 #define xr_list_entry(list, type, member) \
-  ((type *)((void *)(list)-offsetof(type, member.next)))
+  ((type *)((long)(list)-offsetof(type, member)))
 
 static inline bool xr_list_empty(xr_list_t *list) {
   return list->prev == list->next;
@@ -43,8 +43,18 @@ static inline void xr_list_init(xr_list_t *head) {
 #define _xr_list_for_each(head, cur) \
   for (cur = (head)->next; cur != (head); cur = cur->next)
 
+#define _xr_list_for_each_entry(head, entry, type, member) \
+  for (entry = xr_list_entry((head)->next, type, member);  \
+       entry->member.next != (head);                       \
+       entry = xr_list_entry(entry->member.next, type, member))
+
 #define _xr_list_for_each_r(head, cur) \
   for (cur = (head)->prev; cur != (head); cur = cur->prev)
+
+#define _xr_list_for_each_entry_r(head, entry, type, member) \
+  for (entry = xr_list_entry((head)->prev, type, member);    \
+       entry->member.prev != (head);                         \
+       entry = xr_list_entry(entry->member.prev, type, member))
 
 #define _xr_list_for_each_safe(head, cur, temp)             \
   for (cur = (head)->next, temp = cur->next; cur != (head); \
