@@ -1,24 +1,24 @@
-#ifndef _XR_RUNNER_H
-#define _XR_RUNNER_H
+#ifndef _XR_OPTION_H
+#define _XR_OPTION_H
 #include <tracer/time.h>
 
-typedef struct xr_runner_s xr_runner_t;
+typedef struct xr_option_s xr_option_t;
 typedef struct xr_limit_s xr_limit_t;
 
-struct xr_runner_s {
+typedef enum xr_checker_id_e xr_checker_id_t;
+
+struct xr_option_s {
   int process;
+
   xr_limit_t limit, limit_per_process;
 };
 
 struct xr_limit_s {
   int thread;
   int memory;
-  xr_time_t time;
+  xr_time_t sys_time, user_time;
   int file;
   unsigned long long io;
 };
-
-bool xr_runner_setup(xr_runner_t *runner);
-int xr_runner_exec(xr_runner_t *runner);
 
 #endif

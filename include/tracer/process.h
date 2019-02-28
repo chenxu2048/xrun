@@ -19,4 +19,7 @@ struct xr_thread_s {
   xr_list_t threads;
 };
 
+void xr_process_delete(xr_process_t *process);
+void xr_thread_delete(xr_thread_t *thread);
+
 #endif

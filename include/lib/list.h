@@ -60,6 +60,15 @@ static inline void xr_list_init(xr_list_t *head) {
   for (cur = (head)->next, temp = cur->next; cur != (head); \
        cur = temp, temp = cur->next)
 
+#define _xr_list_delete(head, delete_func, type, member)  \
+  do {                                                    \
+    xr_list_t *__delete, *__temp;                         \
+    _xr_list_for_each_safe((head), __delete, __temp) {    \
+      xr_list_del(__delete);                              \
+      delete_func(xr_list_entry(__delete, type, member)); \
+    }                                                     \
+  } while (0)
+
 typedef void xr_list_visitor(xr_list_t *list, void *aux);
 typedef void xr_list_comparator(xr_list_t *left, xr_list_t *right, void *aux);
 

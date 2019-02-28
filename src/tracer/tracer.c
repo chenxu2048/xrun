@@ -21,15 +21,19 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
   if (tracer->spwan(tracer) == false) {
     return false;
   }
+  xr_trace_trap_t trap = {.trap = XR_TRACE_TRAP_NONE};
   while (true) {
-    if (xr_tracer_step(tracer) == false) {
-      xr_tracer_step_error(tracer, result);
-      break;
+    if (tracer->trap(tracer, &trap) == false) {
+      return false;
     }
-    xr_trace_trap_t trap = tracer->trap(tracer);
 
     if (trap.trap == XR_TRACE_TRAP_EXIT ||
         xr_tracer_check(tracer, result, &trap) == false) {
+      break;
+    }
+
+    if (tracer->step(tracer, &trap) == false) {
+      xr_tracer_step_error(tracer, result);
       break;
     }
   }
@@ -46,7 +50,7 @@ bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option) {
   }
 }
 
-bool xr_tracer_check(xr_tracer_t *tracer, xr_result_t *result,
+bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result,
                      xr_trace_trap_t *trap) {
   xr_checker_t *checker;
   _xr_list_for_each_entry(&(tracer->checkers), checker, xr_checker_t,
@@ -59,21 +63,21 @@ bool xr_tracer_check(xr_tracer_t *tracer, xr_result_t *result,
   return true;
 }
 
-bool xr_tracer_step(xr_tracer_t *tracer) {
-  return tracer->step(tracer);
-}
-
 void xr_tracer_clean(xr_tracer_t *tracer) {
-  xr_process_t *process;
-  xr_list_t *process_elem, *temp;
-  _xr_list_for_each_safe(&(tracer->processes), process_elem, temp) {
-    xr_list_del(process_elem);
-    process = xr_list_entry(process_elem, xr_process_t, processes);
-    // TODO: process clean
-  }
+  _xr_list_delete(&(tracer->processes), xr_process_delete, xr_process_t,
+                  processes);
   tracer->failed_checker = NULL;
 }
 
+void __tracer_checker_delete(xr_list_t *checker_elem, void *aux) {
+  xr_checker_t *checker = xr_list_entry(checker_elem, xr_checker_t, checkers);
+  checker->_delete(checker);
+}
+
 void xr_tracer_delete(xr_tracer_t *tracer) {
+  // delete all checkers
+  xr_list_delete(&(tracer->checkers), __tracer_checker_delete, NULL);
+  // clean up all process
+  xr_tracer_clean(tracer);
   free(tracer);
 }

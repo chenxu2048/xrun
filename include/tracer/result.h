@@ -1,7 +1,10 @@
 #ifndef _XR_RESULT_H
 #define _XR_RESULT_H
 
-enum xr_result {
+typedef struct xr_tracer_result_s xr_tracer_result_t;
+typedef enum xr_tracer_code_e xr_tracer_code_t;
+
+enum xr_tracer_code_e {
   XR_RESULT_UNKNOWN = 0x0,
   XR_RESULT_TIMEOUT = 0x1,
   XR_RESULT_FDOUT = 0x2,
@@ -13,6 +16,9 @@ enum xr_result {
   XR_RESULT_OK = 0x8000,
 };
 
-typedef enum xr_result xr_result_t;
+struct xr_tracer_result_s {
+  xr_tracer_code_t status;
+  char *stdout, *stderr;
+};
 
 #endif
