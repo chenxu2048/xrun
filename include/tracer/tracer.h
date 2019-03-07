@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "lib/list.h"
+#include "lib/time.h"
 #include "tracer/checker.h"
 #include "tracer/process.h"
 #include "tracer/result.h"
@@ -29,6 +30,31 @@ typedef void xr_tracer_op_kill_f(xr_tracer_t *tracer, int pid);
 
 struct xr_trace_trap_syscall_s {
   long syscall;
+
+  union {
+    long args[7];
+    struct {
+      long retval;
+      long error;
+    };
+  };
+
+#if defined(__X86_64__) || defined(__X86__) || defined(__X32__)
+  enum _xr_syscall_compat_s {
+#ifdef __X86_64__
+    XR_SYSCALL_COMPAT_MODE_X64,
+#elif defined(__X32__)
+    XR_SYSCALL_COMPAT_MODE_X32,
+#else
+    XR_SYSCALL_COMPAT_MODE_I386
+#endif
+  } syscall_mode;
+#endif
+};
+
+struct xr_trace_trap_resource_s {
+  xr_time_t time;
+  long memory_size;
 };
 
 struct xr_trace_trap_s {
@@ -40,8 +66,13 @@ struct xr_trace_trap_s {
   } trap;
 
   union {
+    int exit_code;
     int stop_signal;
+    struct xr_trace_trap_syscall_s syscall_info;
   };
+
+  struct xr_trace_trap_resource_s resource_info;
+
   xr_process_t *process;
   xr_thread_t *thread;
 };
@@ -61,6 +92,8 @@ struct xr_tracer_s {
   xr_option_t *option;
 
   xr_list_t processes;
+  xr_list_t threads;
+
   xr_list_t checkers;
 
   xr_checker_t *failed_checker;

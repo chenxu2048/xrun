@@ -64,19 +64,33 @@ bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result,
 }
 
 void xr_tracer_clean(xr_tracer_t *tracer) {
-  _xr_list_delete(&(tracer->processes), xr_process_delete, xr_process_t,
-                  processes);
-  tracer->failed_checker = NULL;
-}
+  xr_list_t *cur, *temp;
+  xr_process_t *process;
 
-void __tracer_checker_delete(xr_list_t *checker_elem, void *aux) {
-  xr_checker_t *checker = xr_list_entry(checker_elem, xr_checker_t, checkers);
-  checker->_delete(checker);
+  // free tracer process list and delete tracer process
+  _xr_list_for_each_safe(&(tracer->processes), cur, temp) {
+    xr_list_del(cur);
+    process = xr_list_entry(cur, xr_process_t, processes);
+    xr_process_delete(process);
+    free(process);
+  }
+
+  // all the thread were deleted.
+  tracer->threads.next = tracer->threads.prev = &(tracer->threads);
+
+  tracer->failed_checker = NULL;
 }
 
 void xr_tracer_delete(xr_tracer_t *tracer) {
   // delete all checkers
-  xr_list_delete(&(tracer->checkers), __tracer_checker_delete, NULL);
+  xr_list_t *cur, *temp;
+  xr_checker_t *checker;
+  _xr_list_for_each_safe(&(tracer->checkers), cur, temp) {
+    xr_list_del(cur);
+    checker = xr_list_entry(cur, xr_checker_t, checkers);
+    checker->_delete(checker);
+    free(checker);
+  }
   // clean up all process
   xr_tracer_clean(tracer);
   free(tracer);
