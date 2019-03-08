@@ -21,8 +21,8 @@ struct xr_thread_s {
   int tid;
 
   enum {
-    XR_THREAD_CALLIN,
-    XR_THREAD_CALLOUT,
+    XR_THREAD_CALLIN = 0,
+    XR_THREAD_CALLOUT = 1,
   } syscall_status;
 
   xr_string_t *pwd;

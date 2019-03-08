@@ -69,6 +69,12 @@ bool xr_ptrace_tracer_step(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   return ptrace(PTRACE_SYSCALL, trap->thread->tid, NULL, NULL);
 }
 
+// since thread->syscall_status is 0 or 1, fliping it by xor
+#define __flip_thread_syscall_status(thread) \
+  do {                                       \
+    (thread)->syscall_status ^= 1;           \
+  } while (0)
+
 bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   struct rusage ru;
   int status;
@@ -101,6 +107,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     if (get_syscall_info(trap) == false) {
       return false;
     }
+    __flip_thread_syscall_status(trap->thread);
   }
 
   if (get_resource_info(trap) == false) {
