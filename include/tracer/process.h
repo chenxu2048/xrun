@@ -20,6 +20,11 @@ struct xr_process_s {
 struct xr_thread_s {
   int tid;
 
+  enum {
+    XR_THREAD_CALLIN,
+    XR_THREAD_CALLOUT,
+  } calling;
+
   xr_string_t *pwd;
   xr_file_set_t fset;
 

@@ -10,16 +10,39 @@ typedef xr_string_t xr_path_t;
 
 #define xr_path_delete xr_string_delete;
 
-static inline xr_path_t *xr_path_join(xr_path_t *parent, xr_path_t *child) {
-  return NULL;
+const static xr_path_t xr_path_slash = {
+    .capacity = 2,
+    .length = 1,
+    .string = "/",
+};
+
+/**
+ * Join two path and store it in parent
+ *
+ * @parent parent directory
+ * @child child path. Note: it is undefined if child is a absolute location
+ * (starts with /).
+ */
+static inline void xr_path_join(xr_path_t *parent, xr_path_t *child) {
+  xr_string_concat(parent, &xr_path_slash);
+  xr_string_concat(parent, child);
+}
+
+static inline void xr_path_is_relative(xr_path_t *path) {
+  return path->string[0] != '/';
+}
+
+static inline bool xr_path_contains(xr_path_t *parent, xr_path_t *child) {
+  return xr_string_start_with(child, parent);
 }
 
 #define __xr_path_is_parent_dir(path, anchor) \
   ((path)->string[anchor + 1] == '.' && (path)->string[anchor + 2] == '.')
 
 /*
- * A stupid implementation of finding absolute path.
+ * A stupid implementation of finding absolute path. Result is stored in path.
  *
+ * @@path
  */
 static inline void xr_path_abs(xr_path_t *path) {
   int abs_end = 0, prev_slash = 0;

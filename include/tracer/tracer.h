@@ -21,23 +21,21 @@ typedef bool xr_tracer_op_step_f(xr_tracer_t *tracer, xr_trace_trap_t *trap);
 typedef bool xr_tracer_op_trap_f(xr_tracer_t *tracer, xr_trace_trap_t *trap);
 
 typedef bool xr_tracer_op_get_f(xr_tracer_t *tracer, int pid, void *address,
-                                char *buffer, size_t size);
+                                void *buffer, size_t size);
 
 typedef bool xr_tracer_op_set_f(xr_tracer_t *tracer, int pid, void *address,
-                                const char *buffer, size_t size);
+                                const void *buffer, size_t size);
+
+typedef xr_string_t *xr_tracer_op_strcpy_f(xr_tracer_t *tracer, int pid,
+                                           void *address, size_t max_size);
 
 typedef void xr_tracer_op_kill_f(xr_tracer_t *tracer, int pid);
 
 struct xr_trace_trap_syscall_s {
   long syscall;
 
-  union {
-    long args[7];
-    struct {
-      long retval;
-      long error;
-    };
-  };
+  long args[7];
+  long retval;
 
 #if defined(__X86_64__) || defined(__X86__) || defined(__X32__)
   enum _xr_syscall_compat_s {
@@ -86,6 +84,7 @@ struct xr_tracer_s {
     xr_tracer_op_trap_f *trap;
     xr_tracer_op_get_f *get;
     xr_tracer_op_set_f *set;
+    xr_tracer_op_strcpy_f *strcpy;
   };
   void *tracer_private;
 

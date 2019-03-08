@@ -9,7 +9,7 @@ typedef struct xr_file_set_s xr_file_set_t;
 
 struct xr_file_s {
   int fd;
-  long mode;
+  long flags;
   long write_length, read_length;
   xr_path_t *path;
   xr_list_t files;
@@ -18,6 +18,7 @@ struct xr_file_s {
 struct xr_file_set_shared_s {
   xr_list_t files;
 
+  int file_opened, file_holding;
   long long total_write, total_read;
 };
 
@@ -27,32 +28,51 @@ struct xr_file_set_s {
 };
 
 static inline void xr_file_delete(xr_file_t *file) {
-  xr_path_delete(file->path);
+  if (file->path) {
+    xr_path_delete(file->path);
+  }
 }
 
-static inline void xr_file_open(xr_file_t *file, int fd, long mode,
+/**
+ * Open a new file
+ * @@file
+ * @fd file descriptor of opened file
+ * @flags open flags
+ * @path - file path
+ */
+static inline void xr_file_open(xr_file_t *file, int fd, long flags,
                                 xr_path_t *path) {
   file->path = path;
   file->fd = fd;
-  file->mode = mode;
+  file->flags = flags;
   file->write_length = file->read_length = 0;
 }
 
-static inline xr_file_t *__xr_file_dup(xr_file_t *file) {
-  xr_file_t *dup_file =
-      _XR_NEW(xr_file_t) xr_string_copy(file->path, dup_file->path);
-  dup_file->mode = file->mode;
-  dup_file->write_length = file->write_length;
-  dup_file->read_length = file->write_length;
-  return dup_file;
+static inline void __xr_file_dup(xr_file_t *file, xr_file_t *dfile) {
+  xr_string_copy(dfile->path, file->path);
+  dfile->flags = file->flags;
+  dfile->write_length = file->write_length;
+  dfile->read_length = file->write_length;
 }
 
-static inline xr_file_t *xr_file_dup(xr_file_t *file, int dup_fd) {
-  xr_file_t *dup_file = __xr_file_dup(file);
-  dup_file->fd = dup_fd;
-  return dup_file;
+/**
+ * Duplicate file.
+ *
+ * @@file
+ * @dfile new file pointer
+ * @dup_fd file descriptor of new file
+ */
+static inline xr_file_t *xr_file_dup(xr_file_t *file, xr_file_t *dfile,
+                                     int dup_fd) {
+  __xr_file_dup(file, dfile);
+  dfile->fd = dup_fd;
 }
 
+/**
+ * Delete file set content.
+ *
+ * @@fset
+ */
 static inline void xr_file_set_delete(xr_file_set_t *fset) {
   if (!fset->own) {
     return;
@@ -68,12 +88,23 @@ static inline void xr_file_set_delete(xr_file_set_t *fset) {
   free(fset->data);
 }
 
-static inline xr_file_set_t *xr_file_set_share(xr_file_set_t *fset) {
-  xr_file_set_t *ret = _XR_NEW(xr_file_set_t);
-  ret->data = fset->data;
-  ret->own = false;
+/**
+ * Share a file set.
+ *
+ * @@fset
+ * @sfset shared file set
+ */
+static inline xr_file_set_t *xr_file_set_share(xr_file_set_t *fset,
+                                               xr_file_set_t *sfset) {
+  sfset->data = fset->data;
+  sfset->own = false;
 }
 
+/**
+ * Get ownship of file set assets by cloning shared data.
+ *
+ * @@fset
+ */
 static inline void xr_file_set_own(xr_file_set_t *fset) {
   if (fset->own) {
     return;
@@ -92,5 +123,62 @@ static inline void xr_file_set_own(xr_file_set_t *fset) {
   fset->own = true;
   fset->data = data;
 }
+
+/**
+ * Select one file via fd
+ *
+ * @@fset
+ * @fd fd of file which is looking for
+ *
+ * @return target file
+ */
+static inline xr_file_t *xr_file_set_select_file(xr_file_set_t *fset, int fd) {
+  xr_file_t *file;
+  _xr_list_for_each_entry(&(fset->data->files), file, xr_file_t, files) {
+    if (file->fd == fd) {
+      return file;
+    }
+  }
+  return NULL;
+}
+
+/**
+ * Add new file to file set
+ *
+ * @@fset
+ * @file - new file
+ */
+static inline void xr_file_set_add_file(xr_file_set_t *fset, xr_file_t *file) {
+  xr_list_add(&(fset->data.files), &(file->files));
+  fset->data.file_opened++;
+  fset->data.file_holding++;
+}
+
+/**
+ * Remove file from fset
+ *
+ * @@fset
+ * @file file to be deleted
+ */
+static inline void xr_file_set_remove_file(xr_file_set_t *fset,
+                                           xr_file_t *file) {
+  xr_list_del(&(file->files));
+  xr_file_delete(file);
+  free(file);
+  fset->data.file_holding--;
+}
+
+#define xr_file_set_set_read(fset, read) \
+  do {                                   \
+    (fset)->data->read_length = read;    \
+  } while (0)
+
+#define xr_file_set_set_write(fset, write) \
+  do {                                     \
+    (fset)->data->write_length = write;    \
+  } while (0)
+
+#define xr_file_set_read(fset, read) ((fset)->data->read)
+#define xr_file_set_write(fset, write) ((fset)->data->write)
 
 #endif
