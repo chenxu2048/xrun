@@ -23,7 +23,7 @@ struct xr_thread_s {
   enum {
     XR_THREAD_CALLIN,
     XR_THREAD_CALLOUT,
-  } calling;
+  } syscall_status;
 
   xr_string_t *pwd;
   xr_file_set_t fset;
