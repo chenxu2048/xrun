@@ -5,33 +5,32 @@
 typedef struct xr_option_s xr_option_t;
 typedef struct xr_limit_s xr_limit_t;
 typedef struct xr_file_limit_s xr_file_limit_t;
-typedef struct xr_file_list_s xr_file_list_t;
 
 typedef enum xr_checker_id_e xr_checker_id_t;
 
 struct xr_option_s {
-  int process;
-  xr_file_list_t *files;
-  xr_file_list_t *dirs;
+  int nprocess;
+
+  xr_file_limit_t *file_access;
+  int n_file_access;
+  xr_file_limit_t *dir_access;
+  int n_dir_access;
+  int call_access[XR_SYSCALL_MAX];
+
   xr_limit_t limit, limit_per_process;
 };
 
 struct xr_limit_s {
-  int thread;
+  int nthread;
   int memory;
-  xr_time_t sys_time, user_time;
-  int file;
+  xr_time_t time;
+  int nfile;
   unsigned long long io;
 };
 
 struct xr_file_limit_s {
   xr_path_t path;
   long flags;
-};
-
-struct xr_file_list_s {
-  int length;
-  xr_file_limit_t list[1];
 };
 
 #endif

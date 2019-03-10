@@ -34,7 +34,7 @@ struct xr_checker_s {
 enum xr_checker_id_e {
   XR_CHECKER_FILE,
   XR_CHECKER_FORK,
-  XR_CHECKER_THREAD,
+  XR_CHECKER_SYSCALL,
   XR_CHECKER_RESOURCE
 };
 

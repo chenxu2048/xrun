@@ -50,11 +50,6 @@ struct xr_trace_trap_syscall_s {
 #endif
 };
 
-struct xr_trace_trap_resource_s {
-  xr_time_t time;
-  long memory_size;
-};
-
 struct xr_trace_trap_s {
   enum {
     XR_TRACE_TRAP_SYSCALL,
@@ -68,8 +63,6 @@ struct xr_trace_trap_s {
     int stop_signal;
     struct xr_trace_trap_syscall_s syscall_info;
   };
-
-  struct xr_trace_trap_resource_s resource_info;
 
   xr_process_t *process;
   xr_thread_t *thread;
@@ -91,7 +84,8 @@ struct xr_tracer_s {
   xr_option_t *option;
 
   xr_list_t processes;
-  xr_list_t threads;
+  int nprocess;
+  int nthread;
 
   xr_list_t checkers;
 

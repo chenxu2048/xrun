@@ -14,6 +14,6 @@ void xr_file_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
 
 void xr_file_checker_delete(xr_checker_t *checker);
 
-xr_checker_t *xr_file_checker_new();
+void xr_file_checker_init(xr_checker_t *checker);
 
 #endif

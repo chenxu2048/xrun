@@ -34,9 +34,9 @@ static bool get_resource_info(xr_trace_trap_t *trap) {
   if (getrusage(trap->thread->tid, &rusage) == -1) {
     return false;
   }
-  trap->resource_info.time =
+  trap->process.time =
       xr_time_from_timeval(resource.ru_stime, resource.ru_utime);
-  trap->resource_info.memory_size = resource.ru_maxrss;
+  trap->process.memory = resource.ru_maxrss;
   return true;
 }
 
@@ -44,11 +44,16 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
   xr_process_t *process = _XR_NEW(xr_process_t);
   xr_thread_t *thread = _XR_NEW(xr_thread_t);
   process->pid = child;
+  process->nthread = 0;
+
+  xr_list_init(&(process->threads));
+  xr_list_add(&(tracer->processes), &(process->processes));
+  tracer->nprocess++;
+  tracer->nthread++;
+
   thread->tid = child;
-  thread->process = process;
-  xr_list_add(&(process->threads), &(thread->threads));
-  xr_list_add(&(thread->tracer_threads), &(tracer->threads));
-  xr_list_add(&(process->processes), &(tracer->processes));
+  xr_process_add_thread(process, thread);
+
   return thread;
 }
 
@@ -84,16 +89,25 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   }
 
   // trap stopped thread
-  bool new_thread = true;
-  _xr_list_for_each_entry(&(tracer->threads), trap->thread, xr_thread_t,
-                          tracer_threads) {
-    if (trap->thread->tid == pid) {
-      new_thread = false;
+  xr_thread_t *thread;
+  xr_process_t *process;
+  trap->process = NULL;
+  _xr_list_for_each_entry(&(tracer->processes), process, xr_process_t,
+                          processes) {
+    _xr_list_for_each_entry(&(process->threads), thread, xr_thread_t, threads) {
+      if (thread->tid == pid) {
+        trap->thread = thread;
+        trap->process = process;
+        break;
+      }
+    }
+    if (trap->process) {
       break;
     }
   }
-  if (new_thread) {
-    trap->thread = create_spawned_process(tracer, pid);
+
+  if (trap->process == NULL) {
+    return false;
   }
 
   if (WIFEXITED(status)) {

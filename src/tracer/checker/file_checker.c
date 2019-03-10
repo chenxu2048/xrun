@@ -15,14 +15,12 @@ static struct xr_file_checker_private_s {};
  *
  * @return + file checker
  */
-xr_checker_t *xr_file_checker_new() {
-  xr_checker_t *checker = _XR_NEW(xr_checker_t);
+xr_checker_t *xr_file_checker_init(xr_checker_t *checker) {
   checker->setup = xr_file_checker_setup;
   checker->check = xr_file_checker_check;
   checker->result = xr_file_checker_result;
   checker->_delete = xr_file_checker_delete;
   checker->checker_id = XR_CHECKER_FILE;
-  return checker;
 }
 
 bool xr_file_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
@@ -101,6 +99,10 @@ static inline bool __do_process_open_file(xr_tracer_t *tracer,
   if (path == NULL || at == NULL) {
     return false;
   }
+  if (thread->files->data->file_holding >
+      tracer->option->limit_per_process.file) {
+    return false;
+  }
   if (xr_path_is_relative(path)) {
     xr_path_t abs_path = {};
     xr_string_init(&abs_path, at->length + path->length + 2);
@@ -150,8 +152,29 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
                                       call_args[1], retval, call_args[2]);
       }
       case XR_SYSCALL_READ:
+      case XR_SYSCALL_READV:
+      case XR_SYSCALL_PREAD64:
+      case XR_SYSCALL_PREADV:
+      case XR_SYSCALL_PREADV2:
+      case XR_SYSCALL_PREADV64:
+      // socket read
+      case XR_SYSCALL_RECV:
+      case XR_SYSCALL_RECVFROM:
+      case XR_SYSCALL_RECVMSG:
+      case XR_SYSCALL_RECVMMSG:
+        return __do_process_read_check(checker, tracer, trap);
       case XR_SYSCALL_WRITE:
-        return __do_process_io_check(checker, tracer, trap);
+      case XR_SYSCALL_WRITEV:
+      case XR_SYSCALL_PWRITE64:
+      case XR_SYSCALL_PWRITEV:
+      case XR_SYSCALL_PWRITEV2:
+      case XR_SYSCALL_PWRITEV64:
+      // socket write
+      case XR_SYSCALL_SEND:
+      case XR_SYSCALL_SENDTO:
+      case XR_SYSCALL_SENDMSG:
+      case XR_SYSCALL_SENDMMSG:
+        return __do_process_write_check(checker, tracer, trap);
       default:
         break;
     }
@@ -162,4 +185,6 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 void xr_file_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
                             xr_tracer_result_t *result) {}
 
-void xr_file_checker_delete(xr_checker_t *checker);
+void xr_file_checker_delete(xr_checker_t *checker) {
+  return;
+}
