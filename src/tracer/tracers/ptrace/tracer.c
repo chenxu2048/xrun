@@ -52,6 +52,12 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
   tracer->nthread++;
 
   thread->tid = child;
+  thread->syscall_status = XR_THREAD_CALLOUT;
+  // Current state should be XR_THREAD_CALLIN, Since child process will be
+  // trapped when returning from execve. But this syscall should not be
+  // reported. Hence syscall_status should be XR_THREAD_CALLOUT and we will skip
+  // the first execve syscall by a wait operation before.
+
   xr_process_add_thread(process, thread);
 
   return thread;
@@ -62,10 +68,13 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
   if (fork_ret < 0) {
     return false;
   } else if (fork_ret == 0) {
-    // TODO
+    // TODO: error handle using pipe.
     do_rlimit_setup(tracer->option);
     do_exec(tracer->option);
   } else {
+    if (wait_first_child(tracer, fork_ret)) {
+      return false;
+    }
     create_spawned_process(tracer, fork_ret);
   }
 }
@@ -132,11 +141,12 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
 }
 
 bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
-                          char *buffer, size_t size) {
-  return false;
+                          void *buffer, size_t size) {
+  const size_t chunk = for (int i = 0; i < size / s - 1; ++i) {
+    if (ptrace(PTRACE_PEEKDATA, )) }
 }
 
 bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
-                          const char *buffer, size_t size) {
+                          const void *buffer, size_t size) {
   return false;
 }

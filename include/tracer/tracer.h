@@ -93,9 +93,6 @@ struct xr_tracer_s {
   xr_trace_trap_t *trap;
 };
 
-xr_tracer_t *xr_tracer_new(const char *name);
-void xr_tracer_delete(xr_tracer_t *tracer);
-
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
                      xr_tracer_result_t *result);
 
@@ -103,4 +100,5 @@ bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option);
 bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result);
 void xr_tracer_clean(xr_tracer_t *tracer);
 
+void xr_tracer_delete(xr_tracer_t *tracer);
 #endif

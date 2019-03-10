@@ -6,12 +6,6 @@
 #include "tracer/process.h"
 #include "tracer/tracer.h"
 
-xr_tracer_t *xr_tracer_new(const char *name) {
-  xr_tracer_t *tracer = _XR_NEW(xr_tracer_t);
-  tracer->name = name;
-  return tracer;
-}
-
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
                      xr_tracer_result_t *result) {
   if (xr_tracer_setup(tracer, option) == false) {
@@ -93,5 +87,6 @@ void xr_tracer_delete(xr_tracer_t *tracer) {
   }
   // clean up all process
   xr_tracer_clean(tracer);
-  free(tracer);
+
+  tracer->_delete(tracer);
 }

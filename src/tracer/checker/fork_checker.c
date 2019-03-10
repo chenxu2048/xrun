@@ -50,6 +50,8 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 
   xr_thread_t thread = _XR_NEW(xr_thread_t);
   thread->tid = tid;
+  thread->tid = XR_THREAD_CALLIN;
+  // thread will return from fork or clone, so should be XR_THREAD_CALLIN
   if (fork) {
     // fork will create new thread group
     thread->process = _XR_NEW(xr_process_t);
