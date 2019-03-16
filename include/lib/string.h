@@ -98,7 +98,7 @@ static inline void xr_string_concat(xr_string_t *head, xr_string_t *tail) {
  * @return bool
  */
 static inline bool xr_string_start_with(xr_string_t *str, xr_string_t *head) {
-  return strncmp(parent->string, child->string, parent->length) == 0;
+  return strncmp(str->string, head->string, str->length) == 0;
 }
 
 static inline bool xr_string_equal(xr_string_t lhs, xr_string_t *rhs) {
@@ -119,6 +119,15 @@ static inline void xr_string_format(xr_string_t *str, const char *format, ...) {
   }
   str->length = wrote;
   str->string[str->length] = 0;
+}
+
+static inline void xr_string_swap(xr_string_t *lhs, xr_string_t *rhs) {
+  if (lhs == rhs) {
+    return;
+  }
+  xr_string_t str = *lhs;
+  *lhs = *rhs;
+  *rhs = str;
 }
 
 #endif

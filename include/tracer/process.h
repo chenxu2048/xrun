@@ -2,23 +2,17 @@
 #define _XR_PROCESS_H
 
 #include "lib/list.h"
+#include "lib/time.h"
 #include "tracer/files.h"
 
 typedef struct xr_thread_s xr_thread_t;
 typedef struct xr_process_s xr_process_t;
-
-typedef struct xr_process_resource_s xr_process_resource_t;
-
-struct xr_process_resource_s {};
 
 struct xr_process_s {
   int pid;
 
   int memory;
   xr_time_t time;
-
-  xr_file_set_t fset;
-  xr_string_t pwd;
 
   xr_list_t processes;
   xr_list_t threads;
@@ -45,7 +39,7 @@ struct xr_thread_s {
     XR_THREAD_CALLOUT = 1,
   } syscall_status;
 
-  xr_string_t *pwd;
+  xr_fs_t fs;
   xr_file_set_t fset;
 
   xr_process_t *process;
@@ -61,6 +55,5 @@ static inline void xr_process_add_thread(xr_process_t *process,
 
 void xr_process_delete(xr_process_t *process);
 void xr_thread_delete(xr_thread_t *thread);
-void xr_file_set_delete(xr_file_set_t *fset);
 
 #endif

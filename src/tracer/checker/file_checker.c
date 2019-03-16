@@ -78,21 +78,20 @@ static inline bool __do_process_fchdir(xr_trace_trap_t *trap, int fd) {
 static inline bool __do_process_chdir(xr_trace_trap_t *trap,
                                       xr_tracer_t *tracer) {
   void *path_addr = (void *)(trap->syscall_info.args[0]);
-  xr_path_t *pwd =
+  xr_path_t *path =
       tracer->strcpy(tracer, trap->thread->tid, path_addr, XR_PATH_MAX);
-  xr_path_t *pwd_old = trap->process->pwd;
-  if (pwd == NULL) {
+  xr_path_t *pwd = trap->therad->fs.pwd;
+  if (path == NULL) {
     return false;
   }
-  if (xr_path_is_relative(pwd)) {
-    xr_path_join(pwd_old, pwd);
-    xr_path_abs(pwd_old);
-    pwd_old = pwd;
+  if (xr_path_is_relative(path)) {
+    xr_path_join(pwd, path);
+    xr_path_abs(pwd);
   } else {
-    trap->process->pwd = pwd;
+    xr_string_swap(path, pwd);
   }
-  xr_path_delete(pwd_old);
-  free(pwd_old);
+  xr_path_delete(path);
+  free(path);
   return __do_file_access_check(tracer, pwd, 0);
 }
 
@@ -144,11 +143,13 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 
       // handle fd creating
       case XR_SYSCALL_OPEN:
-        return __do_process_open_file(tracer, trap->thread, trap->process->pwd,
-                                      call_args[0], retval, call_args[1]);
+        return __do_process_open_file(tracer, trap->thread,
+                                      trap->thread->fs.pwd, call_args[0],
+                                      retval, call_args[1]);
       case XR_SYSCALL_CREAT:
-        return __do_process_open_file(tracer, trap->thread, trap->process->pwd,
-                                      call_args[0], retval, __CREAT_FLAGS);
+        return __do_process_open_file(tracer, trap->thread,
+                                      trap->thread->fs.pwd, call_args[0],
+                                      retval, __CREAT_FLAGS);
       case XR_SYSCALL_OPENAT: {
         xr_file_t *at_file =
             xr_file_set_select_file(&(trap->thread.fset), call_args[0]);
