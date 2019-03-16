@@ -5,6 +5,7 @@
 typedef struct xr_option_s xr_option_t;
 typedef struct xr_limit_s xr_limit_t;
 typedef struct xr_file_limit_s xr_file_limit_t;
+typedef struct xr_entry_s xr_entry_t;
 
 typedef enum xr_checker_id_e xr_checker_id_t;
 
@@ -31,6 +32,17 @@ struct xr_limit_s {
 struct xr_file_limit_s {
   xr_path_t path;
   long flags;
+  enum xr_file_access_mode {
+    XR_FILE_ACCESS_MATCH,
+    XR_FILE_ACCESS_CONTAIN,
+  } mode;
+};
+
+struct xr_entry_s {
+  xr_path_t path;
+  int stdin, stdout, stderr;
+  xr_path_t stdin, stdout, stderr;
+  char *const *argv;
 };
 
 #endif

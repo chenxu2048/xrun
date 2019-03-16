@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -7,6 +8,42 @@
 #include "tracer/option.h"
 #include "tracer/tracer.h"
 #include "tracer/tracers/ptrace/tracer.h"
+
+static inline bool __do_set_stdio(int stdio, int fd, const char *path,
+                                  int flag) {
+  int fd_flag = fcntl(fd, F_GETFD);
+  if (errno != 0) {
+    fd_flag = flag;
+  }
+  /* try dup fd to stdio */
+  if (!dup3(fd, stdio, fd_flag)) {
+    return true;
+  }
+  /* try open at path */
+  int fd_new = open(path, flag);
+  if (fd_new == -1 || dup2(fd_new, stdio) == -1) {
+    /* open failed or dup failed */
+    return false;
+  }
+  return true;
+}
+
+static inline void do_exec(xr_entry_t *entry) {
+  ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+
+  if (__do_set_stdio(0, entry->stdin_fd, entry->stdin->string, O_RDONLY) ==
+      false) {
+    return false;
+  }
+  if (__do_set_stdio(1, entry->stdin_fd, entry->stdin->string,
+                     O_CREAT | O_TRUNC | O_RDONLY) == false) {
+    return false;
+  }
+  if (__do_set_stdio(2, entry->stdin_fd, entry->stdin->string,
+                     O_CREAT | O_TRUNC | O_RDONLY) == false) {
+    return false;
+  }
+}
 
 static inline bool rlimit_cpu_time(xr_time_t time) {
   struct rlimit rlimit = {.rlim_cur = time / 1000, .rlim_max = time / 1000 + 1};
@@ -21,8 +58,8 @@ static inline bool rlimit_memory(int memory) {
 }
 
 static inline bool do_rlimit_setup(xr_option_t *option) {
-  return rlimit_memory(option.process.memory) &&
-         rlimit_cpu_time(option.process.sys_time);
+  return rlimit_memory(option.limit_per_process.memory) &&
+         rlimit_cpu_time(option.limit_per_process.sys_time);
 }
 
 static bool get_syscall_info(xr_trace_trap_t *trap) {
@@ -69,11 +106,11 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
     return false;
   } else if (fork_ret == 0) {
     // TODO: error handle using pipe.
-    do_rlimit_setup(tracer->option);
     do_exec(tracer->option);
   } else {
     if (wait_first_child(tracer, fork_ret)) {
-      return false;
+      return xr_tracer_error(
+          tracer, _XR_ADD_FUNC("waiting first child %d failed."), fork_ret);
     }
     create_spawned_process(tracer, fork_ret);
   }
@@ -94,7 +131,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   int status;
   pid_t pid = wait(&status);
   if (pid == -1) {
-    return false;
+    return xr_tracer_error(tracer, _XR_ADD_FUNC("waiting child failed."));
   }
 
   // trap stopped thread
@@ -116,7 +153,8 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   }
 
   if (trap->process == NULL) {
-    return false;
+    return xr_tracer_error(
+        tracer, _XR_ADD_FUNC("unhandled process/thread %d found.\n"), pid);
   }
 
   if (WIFEXITED(status)) {
@@ -128,25 +166,114 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   } else {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
     if (get_syscall_info(trap) == false) {
-      return false;
+      return xr_tracer_error(
+          tracer,
+          _XR_ADD_FUNC(
+              "getting system call infomation of process %d failed.\n"),
+          trap->process->pid);
     }
     __flip_thread_syscall_status(trap->thread);
   }
 
   if (get_resource_info(trap) == false) {
-    return false;
+    return xr_tracer_error(
+        tracer,
+        _XR_ADD_FUNC("getting resource information of process %d failed.\n"),
+        trap->process->pid);
   }
 
   return true;
 }
 
+const static unsigned long __xr_address_mask = sizeof(long) - 1;
+const static unsigned long __xr_address_align = -sizeof(long);
+
 bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
                           void *buffer, size_t size) {
-  const size_t chunk = for (int i = 0; i < size / s - 1; ++i) {
-    if (ptrace(PTRACE_PEEKDATA, )) }
+  // aligned address in kernel
+  long addr = (long)address & __xr_address_align;
+  // offset of needed data
+  size_t offset = addr - (long)address;
+  long data_ = 0;
+  void *data = (void *)&data_;
+  while (true) {
+    data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+    if (errno) {
+      return xr_tracer_error(
+          tracer,
+          _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed.\n"),
+          pid, addr);
+    }
+    size_t need = min(sizeof(long) - offset, size);
+    memcpy(buffer, *data + offset, need);
+    addr += sizeof(long);
+    buffer += sizeof(long);
+    size -= need;
+    offset = 0;
+  }
+  return true;
 }
 
 bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
                           const void *buffer, size_t size) {
-  return false;
+  // aligned address in kernel
+  long addr = (long)address & __xr_address_align;
+  // offset of needed data
+  size_t offset = addr - (long)address;
+  // rest part of data
+  size_t rest = size;
+  long data_ = 0;
+  void *data = (void *)&data_;
+  while (true) {
+    size_t need = min(sizeof(long) - offset, rest);
+    if (need < sizeof(long)) {
+      data = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+    }
+    memcpy((void *)(addr + offset), buffer, need);
+
+    ptrace(PTRACE_POKEDATA, pid, addr, NULL);
+
+    addr += sizeof(long);
+    buffer += sizeof(long);
+    rest -= need;
+    offset = 0;
+  }
+  return true;
+}
+
+bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
+                      size_t max_size, xr_string_t *str) {
+  str->length = 0;
+  // aligned address in kernel
+  long addr = (long)address & __xr_address_align;
+  // offset of needed data
+  size_t offset = addr - (long)address;
+  long data_ = 0;
+  char *data = (char *)&data_;
+  while (true) {
+    data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+    if (errno) {
+      return xr_tracer_error(
+          tracer,
+          _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed.\n"),
+          pid, addr);
+    }
+    size_t need = sizeof(long) - offset;
+    void *term = memchr(data + offset, '\0', need);
+    if (term != NULL) {
+      need = term - data - offset;
+    }
+    xr_string_concat_raw(str, data + offset, need);
+
+    if (term != NULL) {
+      return true;
+    }
+
+    addr += sizeof(long);
+    offset = 0;
+    if (str->capacity - str->length <= sizeof(long)) {
+      xr_string_grow(str, str->capacity * 3 / 2);
+    }
+  }
+  return true;
 }

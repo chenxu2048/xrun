@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -10,10 +11,10 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
                      xr_tracer_result_t *result) {
   if (xr_tracer_setup(tracer, option) == false) {
     result->status = XR_RESULT_UNKNOWN;
-    return false;
+    return xr_tracer_error(tracer, _XR_ADD_FUNC("tracer setup failed."));
   }
   if (tracer->spwan(tracer) == false) {
-    return false;
+    return xr_tracer_error(tracer, _XR_ADD_FUNC("tracer spwan error."));
   }
   xr_trace_trap_t trap = {.trap = XR_TRACE_TRAP_NONE};
   while (true) {
@@ -27,7 +28,7 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
     }
 
     if (tracer->step(tracer, &trap) == false) {
-      xr_tracer_step_error(tracer, result);
+      xr_tracer_error(tracer, _XR_ADD_FUNC("tracer step failed."));
       break;
     }
   }
@@ -40,8 +41,13 @@ bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option) {
   xr_checker_t *checker;
   _xr_list_for_each_entry(&(tracer->checkers), checker, xr_checker_t,
                           checkers) {
-    checker->setup(checker, tracer);
+    if (checker->setup(checker, tracer) == false) {
+      return xr_tracer_error(tracer,
+                             _XR_ADD_FUNC("checker with id %d setup failed"),
+                             checker->checker_id);
+    }
   }
+  return true;
 }
 
 bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result,
@@ -89,4 +95,28 @@ void xr_tracer_delete(xr_tracer_t *tracer) {
   xr_tracer_clean(tracer);
 
   tracer->_delete(tracer);
+}
+
+bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...) {
+  xr_error_t *error = tracer->error;
+  xr_string_t *emsg = error->msg;
+  xr_string_t buffer;
+  xr_string_init(&buffer, strlen(msg) * 2);
+  xr_string_format(&buffer, msg, ) if (errno) {
+    error->errno = errno;
+  }
+  size_t rest = emsg->capacity - emsg->length - 1;
+  va_list args;
+  va_start(msg, args);
+  int wrote = vsnprintf(emsg->string + emsg->length, rest, format, args);
+  va_end(args);
+
+  if (wrote >= rest) {
+    // retry
+    va_start(msg, args);
+    xr_string_grow(emsg, emsg->length + wrote + 1);
+    vsnprintf(emsg->string + emsg->length, rest, format, args);
+    va_end(args);
+  }
+  return false;
 }

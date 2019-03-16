@@ -6,6 +6,8 @@
 typedef struct xr_tracer_s xr_tracer_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
 
+#define _XR_STRING_DEFAULT_CAPACITY 64
+
 bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer);
 
 bool xr_ptrace_tracer_step(xr_tracer_t *tracer);
@@ -18,8 +20,7 @@ bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
 bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
                           const char *buffer, size_t size);
 
-struct xr_ptrace_private_s {
-  bool begin;
-};
+xr_string_t *xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
+                              size_t max_size);
 
 #endif

@@ -11,6 +11,7 @@ void xr_fork_checker_init(xr_checker_t *checker) {
   checker->result = xr_fork_checker_result;
   checker->_delete = xr_fork_checker_delete;
   checker->checker_id = XR_CHECKER_FORK;
+  checker->data = _XR_NEW(struct xr_fork_checker_pricate_s);
 }
 
 bool xr_fork_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
@@ -80,7 +81,9 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 }
 
 void xr_fork_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                            xr_tracer_result_t *result);
+                            xr_tracer_result_t *result) {
+  switch
+}
 
 void xr_fork_checker_delete(xr_checker_t *checker) {
   return;

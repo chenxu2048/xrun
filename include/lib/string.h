@@ -1,6 +1,7 @@
 #ifndef XR_STRING_H
 #define XR_STRING_H
 
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -65,6 +66,16 @@ static inline void xr_string_copy(xr_string_t *dst, xr_string_t *src) {
   }
 }
 
+static inline void xr_string_concat_raw(xr_string_t *head, const char *tail,
+                                        size_t length) {
+  if (head->length + length >= head->capacity) {
+    xr_string_grow(head, head->length + length + 1);
+  }
+  strncpy(head->string + head->length, tail, length);
+  head->length += length;
+  head->string[head->length] = 0;
+}
+
 /**
  * Strcat wrapper of xr_string_t.
  * Note that:
@@ -72,15 +83,10 @@ static inline void xr_string_copy(xr_string_t *dst, xr_string_t *src) {
  *  2. original content of head will be destroyed.
  *
  * @head head part of new string
- * @rest rest part of new string
+ * @tail rest part of new string
  */
-static inline void xr_string_concat(xr_string_t *head, xr_string_t *rest) {
-  if (head->length + rest->length >= head->capacity) {
-    xr_string_grow(head, head->length + rest->length + 1);
-  }
-  strncpy(head->string + head->length, rest->string, rest->length);
-  head->length += rest->length;
-  head->string[head->length] = 0;
+static inline void xr_string_concat(xr_string_t *head, xr_string_t *tail) {
+  xr_string_concat_raw(head, tail->string, tail->length);
 }
 
 /**
@@ -98,6 +104,21 @@ static inline bool xr_string_start_with(xr_string_t *str, xr_string_t *head) {
 static inline bool xr_string_equal(xr_string_t lhs, xr_string_t *rhs) {
   return lhs->length == rhs->length &&
          strncmp(lhs->string, rhs->string, lhs->length);
+}
+
+static inline void xr_string_format(xr_string_t *str, const char *format, ...) {
+  va_list args;
+  va_start(format, args);
+  int wrote = vsnprintf(str->string, str->capacity - 1, format, args);
+  va_end(args);
+  if (wrote >= str->capacity) {
+    va_start(format, args);
+    xr_string_grow(str, wrote + 1);
+    vsnprintf(str->string, str->capacity - 1, format, args);
+    va_end(args);
+  }
+  str->length = wrote;
+  str->string[str->length] = 0;
 }
 
 #endif

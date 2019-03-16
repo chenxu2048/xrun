@@ -1,6 +1,7 @@
 #ifndef XR_TRACER_H
 #define XR_TRACER_H
 
+#include <errno.h>
 #include <stdbool.h>
 
 #include "lib/list.h"
@@ -13,6 +14,7 @@ typedef struct xr_tracer_s xr_tracer_t;
 typedef struct xr_tracer_result_s xr_tracer_result_t;
 typedef struct xr_option_s xr_option_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
+typedef struct xr_error_s xr_error_t;
 
 typedef bool xr_tracer_op_spawn_f(xr_tracer_t *tracer);
 
@@ -91,6 +93,8 @@ struct xr_tracer_s {
 
   xr_checker_t *failed_checker;
   xr_trace_trap_t *trap;
+
+  xr_error_t *error;
 };
 
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
@@ -100,5 +104,13 @@ bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option);
 bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result);
 void xr_tracer_clean(xr_tracer_t *tracer);
 
+bool xr_tracer_error(xr_tracer_t *tracer, const char *msg);
+
 void xr_tracer_delete(xr_tracer_t *tracer);
+
+struct xr_error_s {
+  int errno;
+  xr_string_t msg;
+};
+
 #endif
