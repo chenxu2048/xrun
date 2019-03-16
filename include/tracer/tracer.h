@@ -38,18 +38,6 @@ struct xr_trace_trap_syscall_s {
 
   long args[7];
   long retval;
-
-#if defined(__X86_64__) || defined(__X86__) || defined(__X32__)
-  enum _xr_syscall_compat_s {
-#ifdef __X86_64__
-    XR_SYSCALL_COMPAT_MODE_X64,
-#elif defined(__X32__)
-    XR_SYSCALL_COMPAT_MODE_X32,
-#else
-    XR_SYSCALL_COMPAT_MODE_I386
-#endif
-  } syscall_mode;
-#endif
 };
 
 struct xr_trace_trap_s {

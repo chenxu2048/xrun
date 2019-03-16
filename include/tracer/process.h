@@ -23,6 +23,18 @@ struct xr_process_s {
   xr_list_t processes;
   xr_list_t threads;
   int nthread;
+
+#if defined(__X86_64__) || defined(__X86__) || defined(__X32__)
+  enum _xr_syscall_compat_s {
+#ifdef __X86_64__
+    XR_SYSCALL_COMPAT_MODE_X64,
+#elif defined(__X32__)
+    XR_SYSCALL_COMPAT_MODE_X32,
+#else
+    XR_SYSCALL_COMPAT_MODE_X86,
+#endif
+  } syscall_mode;
+#endif
 };
 
 struct xr_thread_s {
