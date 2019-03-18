@@ -1,0 +1,4 @@
+[submodule "ext/yajl"]
+	path = ext/yajl
+	url = https://github.com/lloyd/yajl.git
+	branch = 2.1.0

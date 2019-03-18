@@ -9,39 +9,24 @@
 #include "tracer/tracer.h"
 #include "tracer/tracers/ptrace/tracer.h"
 
-static inline bool __do_set_stdio(int stdio, int fd, const char *path,
-                                  int flag) {
+static inline bool __do_set_stdio(int stdio, int fd, int flag) {
   int fd_flag = fcntl(fd, F_GETFD);
   if (errno != 0) {
     fd_flag = flag;
   }
+  fd_flag &= ~O_CLOEXEC;
   /* try dup fd to stdio */
-  if (!dup3(fd, stdio, fd_flag)) {
-    return true;
-  }
-  /* try open at path */
-  int fd_new = open(path, flag);
-  if (fd_new == -1 || dup2(fd_new, stdio) == -1) {
-    /* open failed or dup failed */
-    return false;
-  }
-  return true;
+  return dup3(fd, stdio, fd_flag) != -1;
 }
 
-static inline void do_exec(xr_entry_t *entry) {
+static inline bool do_exec(xr_tracer_t *tracer, xr_entry_t *entry) {
   ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-
-  if (__do_set_stdio(0, entry->stdin_fd, entry->stdin->string, O_RDONLY) ==
-      false) {
-    return false;
-  }
-  if (__do_set_stdio(1, entry->stdin_fd, entry->stdin->string,
-                     O_CREAT | O_TRUNC | O_RDONLY) == false) {
-    return false;
-  }
-  if (__do_set_stdio(2, entry->stdin_fd, entry->stdin->string,
-                     O_CREAT | O_TRUNC | O_RDONLY) == false) {
-    return false;
+  const flag = O_CREAT | O_TRUNC | O_WRONLY;
+  for (int i = 0; i < 3； ++i) {
+    if (__do_set_stdio(i, entry->stdio[i], i & flag) == false) {
+      xr_tracer_error(tracer, _XR_ADD_FUNC("dup file %d error."), i);
+      return;
+    }
   }
 }
 
@@ -72,7 +57,7 @@ static bool get_resource_info(xr_trace_trap_t *trap) {
     return false;
   }
   trap->process.time =
-      xr_time_from_timeval(resource.ru_stime, resource.ru_utime);
+    xr_time_from_timeval(resource.ru_stime, resource.ru_utime);
   trap->process.memory = resource.ru_maxrss;
   return true;
 }
@@ -118,7 +103,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
   int error_pipe[2] = {};
   if (pipe2(error_pipe, O_CLOEXEC) == -1) {
     return xr_tracer_error(
-        tracer, _XR_ADD_FUNC("ptrace_tracer popen error pipe failed."));
+      tracer, _XR_ADD_FUNC("ptrace_tracer popen error pipe failed."));
   }
 
   // do fork here
@@ -136,7 +121,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
     // exec failed. die here
     // send tracer->error into pipe
     struct __xr_ptrace_tracer_pipe_info error = {
-        .errno = tracer->error->errno,
+      .errno = tracer->error->errno,
     };
     strncpy(error.msg, tracer->error->msg, __XR_PTRACE_TRACER_PIPE_ERR);
     write(error_pipe[1], &error, sizeof(error));
@@ -157,22 +142,22 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
     xr_tracer_error(tracer, error.msg);
     errno = error.errno;
     return xr_tracer_error(
-        tracer, _XR_ADD_FUNC("waiting first child %d failed."), fork_ret);
+      tracer, _XR_ADD_FUNC("waiting first child %d failed."), fork_ret);
   }
 
   // set options here
   if (ptrace(PTRACE_SETOPTIONS, fork_ret, NULL,
              PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK |
-                 PTRACE_O_TRACEFORK) == 0) {
+               PTRACE_O_TRACEFORK) == 0) {
     return xr_tracer_error(
-        tracer,
-        _XR_ADD_FUNC("ptrace tracer PTRACE_SETOPTIONS for process %d failed."),
-        fork_ret);
+      tracer,
+      _XR_ADD_FUNC("ptrace tracer PTRACE_SETOPTIONS for process %d failed."),
+      fork_ret);
   }
 
   if (ptrace(PTRACE_SYSCALL, fork_ret, NULL, NULL)) {
     return xr_tracer_error(
-        tracer, _XR_ADD_FUNC("ptrace tracer PTRACE_SYSCALL failed."));
+      tracer, _XR_ADD_FUNC("ptrace tracer PTRACE_SYSCALL failed."));
   }
 
   xr_process_t *process = create_spawned_process(tracer, fork_ret);
@@ -222,7 +207,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
 
   if (trap->process == NULL) {
     return xr_tracer_error(
-        tracer, _XR_ADD_FUNC("unhandled process/thread %d found."), pid);
+      tracer, _XR_ADD_FUNC("unhandled process/thread %d found."), pid);
   }
 
   if (WIFEXITED(status)) {
@@ -235,18 +220,18 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
     if (get_syscall_info(trap) == false) {
       return xr_tracer_error(
-          tracer,
-          _XR_ADD_FUNC("getting system call infomation of process %d failed."),
-          trap->process->pid);
+        tracer,
+        _XR_ADD_FUNC("getting system call infomation of process %d failed."),
+        trap->process->pid);
     }
     __flip_thread_syscall_status(trap->thread);
   }
 
   if (get_resource_info(trap) == false) {
     return xr_tracer_error(
-        tracer,
-        _XR_ADD_FUNC("getting resource information of process %d failed."),
-        trap->process->pid);
+      tracer,
+      _XR_ADD_FUNC("getting resource information of process %d failed."),
+      trap->process->pid);
   }
 
   return true;
@@ -267,9 +252,9 @@ bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
     data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
     if (errno) {
       return xr_tracer_error(
-          tracer,
-          _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed."),
-          pid, addr);
+        tracer,
+        _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed."), pid,
+        addr);
     }
     size_t need = min(sizeof(long) - offset, size);
     memcpy(buffer, *data + offset, need);
@@ -321,9 +306,9 @@ bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
     data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
     if (errno) {
       return xr_tracer_error(
-          tracer,
-          _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed."),
-          pid, addr);
+        tracer,
+        _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed."), pid,
+        addr);
     }
     size_t need = sizeof(long) - offset;
     void *term = memchr(data + offset, '\0', need);

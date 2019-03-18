@@ -79,7 +79,7 @@ static inline bool __do_process_chdir(xr_trace_trap_t *trap,
                                       xr_tracer_t *tracer) {
   void *path_addr = (void *)(trap->syscall_info.args[0]);
   xr_path_t *path =
-      tracer->strcpy(tracer, trap->thread->tid, path_addr, XR_PATH_MAX);
+    tracer->strcpy(tracer, trap->thread->tid, path_addr, XR_PATH_MAX);
   xr_path_t *pwd = trap->therad->fs.pwd;
   if (path == NULL) {
     return false;
@@ -152,7 +152,7 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
                                       retval, __CREAT_FLAGS);
       case XR_SYSCALL_OPENAT: {
         xr_file_t *at_file =
-            xr_file_set_select_file(&(trap->thread.fset), call_args[0]);
+          xr_file_set_select_file(&(trap->thread.fset), call_args[0]);
         return __do_process_open_file(tracer, trap->thread, at_file,
                                       call_args[1], retval, call_args[2]);
       }

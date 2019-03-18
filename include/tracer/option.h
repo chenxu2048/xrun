@@ -1,6 +1,6 @@
 #ifndef _XR_OPTION_H
 #define _XR_OPTION_H
-#include <lib/time.h>
+#include "lib/time.h"
 
 typedef struct xr_option_s xr_option_t;
 typedef struct xr_limit_s xr_limit_t;
@@ -39,9 +39,9 @@ struct xr_file_limit_s {
 };
 
 struct xr_entry_s {
-  xr_path_t path;
-  int stdin, stdout, stderr;
-  xr_path_t stdin, stdout, stderr;
+  xr_path_t path, pwd, root;
+  int user;
+  int stdio[3];
   char *const *argv;
 };
 

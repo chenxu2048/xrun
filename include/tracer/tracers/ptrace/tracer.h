@@ -1,6 +1,8 @@
 #ifndef _XR_PTRACE_TRACER
 #define _XR_PTRACE_TRACER
 
+#include "lib/string.h"
+
 #include <stdbool.h>
 
 typedef struct xr_tracer_s xr_tracer_t;

@@ -1,5 +1,5 @@
-#ifndef _XRUN_LIST_H
-#define _XRUN_LIST_H
+#ifndef XR_LIST_H
+#define XR_LIST_H
 
 #include <stdbool.h>
 

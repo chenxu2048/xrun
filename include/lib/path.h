@@ -11,9 +11,9 @@ typedef xr_string_t xr_path_t;
 #define xr_path_delete xr_string_delete;
 
 const static xr_path_t xr_path_slash = {
-    .capacity = 2,
-    .length = 1,
-    .string = "/",
+  .capacity = 2,
+  .length = 1,
+  .string = "/",
 };
 
 /**

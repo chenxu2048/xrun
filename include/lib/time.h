@@ -1,5 +1,5 @@
-#ifndef _XR_TIME_H
-#define _XR_TIME_H
+#ifndef XR_TIME_H
+#define XR_TIME_H
 
 #include <sys/time.h>
 
@@ -19,8 +19,8 @@ static inline xr_time_ms_t xr_time_ms_from_timeval(struct timeval timeval) {
 static inline xr_time_t xr_time_from_timeval(struct timeval sys_time,
                                              struct timeval user_time) {
   xr_time_t time = {
-      .sys_time = xr_time_ms_from_timeval(sys_time),
-      .user_time = xr_time_ms_from_timeval(user_time),
+    .sys_time = xr_time_ms_from_timeval(sys_time),
+    .user_time = xr_time_ms_from_timeval(user_time),
   };
   return time;
 }

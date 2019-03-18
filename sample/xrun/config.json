@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "/dev/urandom",
+      "mode": "O_RDONLY"
+    }
+  ],
+  "directories": [
+    {
+      "path": "/usr/lib",
+      "mode": "O_RDONLY"
+    }
+  ],
+  "calls": [
+    "open",
+    "read"
+  ],
+  "limit": {
+    "memory": 512,
+    "time": 1000,
+    "thread": 2,
+    "fork": 1
+  }
+}

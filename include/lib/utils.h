@@ -1,5 +1,5 @@
-#ifndef _XR_UTILS_H
-#define _XR_UTILS_H
+#ifndef XR_UTILS_H
+#define XR_UTILS_H
 
 #include <stdlib.h>
 #define _XR_NEW(type) ((type *)malloc(sizeof(type)))
