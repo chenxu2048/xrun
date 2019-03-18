@@ -2,6 +2,7 @@
 #define XR_JSON_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include <yajl/yajl_parse.h>

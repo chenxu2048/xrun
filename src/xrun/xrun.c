@@ -1,3 +1,6 @@
+#include <stdbool.h>
+#include <stdio.h>
+
 #include <getopt.h>
 #include <unistd.h>
 
