@@ -1,6 +1,6 @@
 #include <stdarg.h>
 
-#include "lib/json.h"
+#include "tracer/utils/json.h"
 
 struct xr_json_ctx_stack_s;
 typedef struct xr_json_ctx_stack_s xr_json_ctx_stack_t;

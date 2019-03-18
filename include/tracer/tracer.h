@@ -4,11 +4,11 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#include "lib/list.h"
-#include "lib/time.h"
 #include "tracer/checker.h"
 #include "tracer/process.h"
 #include "tracer/result.h"
+#include "tracer/utils/list.h"
+#include "tracer/utils/time.h"
 
 typedef struct xr_tracer_s xr_tracer_t;
 typedef struct xr_tracer_result_s xr_tracer_result_t;

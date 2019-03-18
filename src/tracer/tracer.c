@@ -2,10 +2,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "lib/utils.h"
 #include "tracer/checker.h"
 #include "tracer/process.h"
 #include "tracer/tracer.h"
+#include "tracer/utils/utils.h"
 
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
                      xr_tracer_result_t *result) {

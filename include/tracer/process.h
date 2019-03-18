@@ -1,9 +1,9 @@
 #ifndef _XR_PROCESS_H
 #define _XR_PROCESS_H
 
-#include "lib/list.h"
-#include "lib/time.h"
 #include "tracer/files.h"
+#include "tracer/utils/list.h"
+#include "tracer/utils/time.h"
 
 typedef struct xr_thread_s xr_thread_t;
 typedef struct xr_process_s xr_process_t;

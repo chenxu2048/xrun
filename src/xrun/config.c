@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#include "lib/json.h"
-#include "lib/string.h"
+#include "tracer/utils/json.h"
+#include "tracer/utils/string.h"
 #include "xrun/config.h"
 #include "xrun/file_limit.h"
 
@@ -170,7 +170,10 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
     XRN_CONFIG_ERROR(error, "limit.time is required.");
     goto config_error;
   } else if (XR_JSON_IS_INTEGER(time)) {
-    option->limit.time = option->limit_per_process.time = XR_JSON_INTEGER(time);
+    option->limit.time = option->limit_per_process.time = {
+      XR_JSON_INTEGER(time),
+      XR_JSON_INTEGER(time),
+    };
   } else {
     XRN_CONFIG_ERROR(error, "limit.time is not a integer");
     goto config_error;

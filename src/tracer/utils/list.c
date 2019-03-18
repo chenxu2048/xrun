@@ -1,4 +1,4 @@
-#include "lib/list.h"
+#include "tracer/utils/list.h"
 
 void xr_list_for_each(xr_list_t *head, xr_list_visitor visitor, void *aux) {
   xr_list_t *cur;

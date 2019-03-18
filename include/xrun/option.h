@@ -8,7 +8,7 @@ struct xrn_option {
   const char *descption;
   const char *def_val;
   const char *format;
-  void(set_val *)(char *def_val);
+  void(set_val *)(char *def_val, xr_option_t *ctx);
 };
 
 struct option *xrn_make_option(struct xrn_option *opts);

@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "lib/utils.h"
+#include "tracer/utils/utils.h"
 #include "tracer/option.h"
 #include "tracer/tracer.h"
 #include "tracer/tracers/ptrace/tracer.h"

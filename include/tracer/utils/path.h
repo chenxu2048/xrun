@@ -3,8 +3,8 @@
 
 #include <stdlib.h>
 
-#include "lib/string.h"
-#include "lib/utils.h"
+#include "tracer/utils/string.h"
+#include "tracer/utils/utils.h"
 
 typedef xr_string_t xr_path_t;
 

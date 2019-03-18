@@ -1,7 +1,8 @@
 #ifndef _XR_CHECKER_H
 #define _XR_CHECKER_H
 
-#include "lib/list.h"
+#include "tracer/utils/list.h"
+
 struct xr_checker_s;
 typedef struct xr_checker_s xr_checker_t;
 

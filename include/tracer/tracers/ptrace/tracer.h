@@ -1,7 +1,7 @@
 #ifndef _XR_PTRACE_TRACER
 #define _XR_PTRACE_TRACER
 
-#include "lib/string.h"
+#include "tracer/utils/string.h"
 
 #include <stdbool.h>
 

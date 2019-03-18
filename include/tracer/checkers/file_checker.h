@@ -1,8 +1,8 @@
 #ifndef XR_FILE_CHECKER_H
 #define XR_FILE_CHECKER_H
 
-#include "lib/utils.h"
 #include "tracer/checker.h"
+#include "tracer/utils/utils.h"
 
 bool xr_file_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer);
 

@@ -7,7 +7,7 @@
 #include <yajl/yajl_parse.h>
 #include <yajl/yajl_tree.h>
 
-#include "lib/string.h"
+#include "tracer/utils/string.h"
 
 typedef struct yajl_val_s xr_json_t;
 

@@ -1,18 +1,25 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#include <xrun/file_limit.h>
-#include <xrun/option.h>
-
 #include "tracer/tracer.h"
+
+#include "xrun/config.h"
+#include "xrun/file_limit.h"
+#include "xrun/option.h"
 
 static char *config_path = NULL;
 static bool version = false, help = false;
-xr_option_t tracer_option = {};
-static struct xrn_fdlimit {
-  xr_file_limit_t *limit;
-  int nentry, length;
-};
+static int retval = 0;
+
+static xr_option_t xrn_option = {};
+static xr_entry_t xrn_entry = {};
+
+static int nthread;
+static int nprocess;
+static int memory;
+static int nfile;
+static xr_time_t time;
+
 #define XR_FILE_LIMIT_SIZE 128
 
 const static struct xrn_option options[] = {
@@ -106,14 +113,24 @@ const static struct xrn_option options[] = {
 void xr_xrun_parse_opt(int argc, const char *argv[]) {
   int option_index = 0;
   opterr = 0;
+  xr_string_t error;
+  xr_string_init(&error, 256);
   while (1) {
     int opt = getopt_long(argc, argv, option_short, options, &option_index);
     switch (opt) {
       case -1:
         return;
-      case 'c':
+      case 'c': {
+        if (config_path != NULL) {
+          fputs("--config is not unique.\n", stderr);
+        }
         config_path = optarg;
+        if (xrn_config_parse(config_path, option, error) == false) {
+          retval = 1;
+          return;
+        }
         break;
+      }
       case 'C':
       case 'd':
       case 'f':
@@ -122,11 +139,13 @@ void xr_xrun_parse_opt(int argc, const char *argv[]) {
       case 'n':
       case 't':
       case 'T':
+        break;
       case 'v':
         version = true;
         break;
-      case 'h':
       case '?':
+        retval = 1;
+      case 'h':
         help = true;
         break;
       default:
@@ -136,5 +155,5 @@ void xr_xrun_parse_opt(int argc, const char *argv[]) {
 }
 
 int main(int argc, const char *argv[]) {
-  xr_xrun_parse_opt(argc, argv);
+  xr_xrun_parse_opt(argc, argv, &error);
 }

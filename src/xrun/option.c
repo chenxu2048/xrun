@@ -54,7 +54,6 @@ const char *xrn_make_short_option(struct xrn_option *opt) {
     opt_idx++;
   }
 
-  *sopts++ = '?';
   *sopts++ = '\0';
   return short_options;
 }

@@ -1,8 +1,8 @@
 #ifndef XR_FILES_H
 #define XR_FILES_H
 
-#include "lib/list.h"
-#include "lib/path.h"
+#include "tracer/utils/list.h"
+#include "tracer/utils/path.h"
 
 typedef struct xr_file_s xr_file_t;
 typedef struct xr_file_set_s xr_file_set_t;

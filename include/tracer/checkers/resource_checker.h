@@ -1,8 +1,8 @@
 #ifndef XR_RESOURCE_CHECKER_H
 #define XR_RESOURCE_CHECKER_H
 
-#include "lib/utils.hs"
 #include "tracer/checker.h"
+#include "tracer/utils/utils.hs"
 
 bool xr_resource_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer);
 
