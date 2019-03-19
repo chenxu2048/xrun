@@ -1,6 +1,51 @@
+#include <assert.h>
+#include <limits.h>
 #include <stdarg.h>
 
+#include <errno.h>
+
 #include "tracer/utils/json.h"
+#include "tracer/utils/utils.h"
+
+#define MAX_VALUE_TO_MULTIPLY ((LLONG_MAX / 10) + (LLONG_MAX % 10))
+
+/* copy from yajl lib */
+/* same semantics as strtol */
+static inline long long xr_json_parse_integer(const unsigned char *number,
+                                              unsigned int length) {
+  long long ret = 0;
+  long sign = 1;
+  const unsigned char *pos = number;
+  if (*pos == '-') {
+    pos++;
+    sign = -1;
+  }
+  if (*pos == '+') {
+    pos++;
+  }
+
+  while (pos < number + length) {
+    if (ret > MAX_VALUE_TO_MULTIPLY) {
+      errno = ERANGE;
+      return sign == 1 ? LLONG_MAX : LLONG_MIN;
+    }
+    ret *= 10;
+    if (LLONG_MAX - ret < (*pos - '0')) {
+      errno = ERANGE;
+      return sign == 1 ? LLONG_MAX : LLONG_MIN;
+    }
+    if (*pos < '0' || *pos > '9') {
+      errno = ERANGE;
+      return sign == 1 ? LLONG_MAX : LLONG_MIN;
+    }
+    ret += (*pos++ - '0');
+  }
+
+  return sign * ret;
+}
+
+#define STATUS_CONTINUE 1
+#define STATUS_ABORT 0
 
 struct xr_json_ctx_stack_s;
 typedef struct xr_json_ctx_stack_s xr_json_ctx_stack_t;
@@ -8,7 +53,7 @@ struct xr_json_ctx_stack_s {
   char *key;
   xr_json_t *value;
   xr_json_ctx_stack_t *next;
-}
+};
 
 struct xr_json_ctx_s;
 typedef struct xr_json_ctx_s xr_json_ctx_t;
@@ -18,7 +63,12 @@ struct xr_json_ctx_s {
   xr_string_t *error;
 };
 
-static inline bool xr_json_ctx_error(xr_json_ctx_t *ctx, const char *errmsg) {
+#define _XR_JSON_CTX_ERROR(ctx, err) (xr_json_ctx_error(ctx, __func__, err))
+
+static inline bool xr_json_ctx_error(xr_json_ctx_t *ctx, const char *func,
+                                     const char *errmsg) {
+  xr_string_concat_raw(ctx->error, func, strlen(func));
+  xr_string_concat_raw(ctx->error, ": ", 2);
   xr_string_concat_raw(ctx->error, errmsg, strlen(errmsg));
   return false;
 }
@@ -40,7 +90,7 @@ static inline void xr_json_ctx_stack_clean(xr_json_ctx_t *ctx) {
 static inline bool xr_json_ctx_push(xr_json_ctx_t *ctx, xr_json_t *json) {
   xr_json_ctx_stack_t *stack = _XR_NEW(xr_json_ctx_stack_t);
   if (stack == NULL) {
-    return xr_json_ctx_error(ctx, __func__ ": out of memory.");
+    return _XR_JSON_CTX_ERROR(ctx, "out of memory.");
   }
   stack->value = json;
   stack->key = NULL;
@@ -49,9 +99,9 @@ static inline bool xr_json_ctx_push(xr_json_ctx_t *ctx, xr_json_t *json) {
   return true;
 }
 
-static inline xr_jsont_t xr_json_ctx_pop(context_t *ctx) {
+static inline xr_json_t *xr_json_ctx_pop(xr_json_ctx_t *ctx) {
   if (ctx->stack == NULL) {
-    xr_json_ctx_error(ctx, __func__ ": bottom of stack reached prematurely.");
+    _XR_JSON_CTX_ERROR(ctx, "bottom of stack reached prematurely.");
     return NULL;
   }
   xr_json_ctx_stack_t *stack = ctx->stack;
@@ -61,12 +111,12 @@ static inline xr_jsont_t xr_json_ctx_pop(context_t *ctx) {
   return json;
 }
 
-static inline xr_json_t xr_json_alloc(yajl_type type) {
+static inline xr_json_t *xr_json_alloc(yajl_type type) {
   xr_json_t *v = _XR_NEW(xr_json_t);
   if (v == NULL) {
     return NULL;
   }
-  memset(v, 0, sizeof(v));
+  memset(v, 0, sizeof(xr_json_t));
   v->type = type;
   return v;
 }
@@ -78,20 +128,20 @@ static inline xr_json_t xr_json_alloc(yajl_type type) {
 
 static inline void xr_json_object_free(xr_json_t *obj) {
   XR_RETURN_IF_NOT(obj, OBJECT);
-  for (size_t i = 0; i < XR_JSON_OBJECT(obj)->len; ++i) {
-    free(XR_JSON_OBJECT(obj)->keys[i]);
-    xr_json_free(XR_JSON_OBJECT(obj)->values[i]);
+  for (size_t i = 0; i < _XR_JSON_OBJECT(obj)->len; ++i) {
+    free((void *)(_XR_JSON_OBJECT(obj)->keys[i]));
+    xr_json_free(_XR_JSON_OBJECT(obj)->values[i]);
   }
-  free(XR_JSON_OBJECT(obj)->keys);
-  free(XR_JSON_OBJECT(obj)->value);
+  free(_XR_JSON_OBJECT(obj)->keys);
+  free(_XR_JSON_OBJECT(obj)->values);
 }
 
 static inline void xr_json_array_free(xr_json_t *arr) {
   XR_RETURN_IF_NOT(arr, ARRAY);
-  for (size_t i = 0; i < XR_JSON_ARRAY(arr)->len; ++i) {
-    xr_json_free(XR_JSON_ARRAY(arr)->values[i]);
+  for (size_t i = 0; i < _XR_JSON_ARRAY(arr)->len; ++i) {
+    xr_json_free(_XR_JSON_ARRAY(arr)->values[i]);
   }
-  free(XR_JSON_ARRAY(arr)->values);
+  free(_XR_JSON_ARRAY(arr)->values);
 }
 
 void xr_json_free(xr_json_t *json) {
@@ -110,42 +160,43 @@ void xr_json_free(xr_json_t *json) {
       xr_json_array_free(json);
       break;
     default:
+      return;
   }
   free(json);
 }
 
 static inline bool xr_json_ctx_obj_push(xr_json_ctx_t *ctx, xr_json_t *obj,
                                         char *key, xr_json_t *value) {
-  const size_t orig_len = XR_JSON_OBJECT(obj)->len;
-  char *keys =
-    realloc(XR_JSON_OBJECT(obj)->keys, sizeof(char *) * (orig_len + 1));
-  xr_json_t *values =
-    realloc(XR_JSON_OBJECT(obj)->values, sizeof(xr_json_t *) * (orig_len + 1));
+  const size_t orig_len = _XR_JSON_OBJECT(obj)->len;
+  const char **keys =
+    realloc(_XR_JSON_OBJECT(obj)->keys, sizeof(char *) * (orig_len + 1));
+  xr_json_t **values =
+    realloc(_XR_JSON_OBJECT(obj)->values, sizeof(xr_json_t *) * (orig_len + 1));
   if (keys == NULL || values == NULL) {
-    return xr_json_ctx_error(ctx, __func__ ": out of memory.");
+    return _XR_JSON_CTX_ERROR(ctx, "out of memory.");
   }
 
-  keys[orig_len + 1] = key;
-  values[orig_len + 1] = value;
-  XR_JSON_OBJECT(obj)->len++;
-  XR_JSON_OBJECT(obj)->keys = keys;
-  XR_JSON_OBJECT(obj)->values = values;
+  keys[orig_len] = key;
+  values[orig_len] = value;
+  _XR_JSON_OBJECT(obj)->len++;
+  _XR_JSON_OBJECT(obj)->keys = keys;
+  _XR_JSON_OBJECT(obj)->values = values;
   return true;
 }
 
 static inline bool xr_json_ctx_array_append(xr_json_ctx_t *ctx,
                                             xr_json_t *array,
                                             xr_json_t *value) {
-  const size_t orig_len = XR_JSON_ARRAY(array)->len;
-  xr_json_t *values =
-    realloc(XR_JSON_ARRAY(array)->values, sizeof(xr_json_t *) * (orig_len + 1));
+  const size_t orig_len = _XR_JSON_ARRAY(array)->len;
+  xr_json_t **values = realloc(_XR_JSON_ARRAY(array)->values,
+                               sizeof(xr_json_t *) * (orig_len + 1));
   if (values == NULL) {
-    return xr_json_ctx_error(ctx, __func__ ": out of memory.");
+    return _XR_JSON_CTX_ERROR(ctx, "out of memory.");
   }
 
-  values[orig_len + 1] = value;
-  XR_JSON_ARRAY(array)->len++;
-  XR_JSON_ARRAY(array)->values = values;
+  values[orig_len] = value;
+  _XR_JSON_ARRAY(array)->len++;
+  _XR_JSON_ARRAY(array)->values = values;
   return true;
 }
 
@@ -156,8 +207,10 @@ static inline bool xr_json_ctx_add(xr_json_ctx_t *ctx, xr_json_t *json) {
     return true;
   } else if (XR_JSON_IS_OBJECT(ctx->stack->value)) {
     if (ctx->stack->key == NULL) {
-      XR_RETURN_IF_NOT(json, STRING);
-      ctx->stack->key = XR_JSON_STRING(json);
+      if (!XR_JSON_IS_STRING(json)) {
+        return false;
+      }
+      ctx->stack->key = _XR_JSON_STRING(json);
       free(json);
       return true;
     } else {
@@ -166,9 +219,9 @@ static inline bool xr_json_ctx_add(xr_json_ctx_t *ctx, xr_json_t *json) {
       return xr_json_ctx_obj_push(ctx, ctx->stack->value, key, json);
     }
   } else if (XR_JSON_IS_ARRAY(ctx->stack->value)) {
-    return (xr_json_ctx_array_append(ctx, ctx->stack->value, json));
+    return xr_json_ctx_array_append(ctx, ctx->stack->value, json);
   }
-  return xr_json_ctx_error(ctx, __func__ ": unhandled type");
+  return _XR_JSON_CTX_ERROR(ctx, "unhandled type");
 }
 
 // wrapping context cast
@@ -184,12 +237,11 @@ static inline bool xr_json_ctx_add(xr_json_ctx_t *ctx, xr_json_t *json) {
 
 // wrapping error return
 #define XR_JSON_CALLBACK_ERROR_WRAP(ctx, msg) \
-  (xr_json_ctx_error(XR_JSON_CALLBACK_CTX_WRAP(ctx), msg), STATUS_ABORT)
+  (_XR_JSON_CTX_ERROR(XR_JSON_CALLBACK_CTX_WRAP(ctx), msg), STATUS_ABORT)
 
-#define XR_JSON_CALLBACK_CHECK_AND_ADD(ctx, json)                     \
-  (json == NULL)                                                      \
-    ? (XR_JSON_CALLBACK_ERROR_WRAP(ctx), __func__ ": out of memory.") \
-    : (XR_JSON_CALLBACK_ADD_WRAP(ctx, json))
+#define XR_JSON_CALLBACK_CHECK_AND_ADD(ctx, json)                         \
+  (json == NULL) ? (XR_JSON_CALLBACK_ERROR_WRAP((ctx), "out of memory.")) \
+                 : (XR_JSON_CALLBACK_ADD_WRAP(ctx, json))
 
 static int xr_json_handle_null(void *ctx) {
   xr_json_t *json = xr_json_alloc(yajl_t_null);
@@ -208,13 +260,13 @@ static int xr_json_handle_number(void *ctx, const char *string,
 
   xr_json_t *json = xr_json_alloc(yajl_t_number);
   if (json == NULL) {
-    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, __func__ ": out of memory.");
+    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, "out of memory.");
   }
 
   XR_JSON_NUMBER(json) = malloc(string_length + 1);
   if (XR_JSON_NUMBER(json) == NULL) {
     free(json);
-    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, __func__ ": out of memory.");
+    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, "out of memory.");
   }
   memcpy(XR_JSON_NUMBER(json), string, string_length);
   XR_JSON_NUMBER(json)[string_length] = 0;
@@ -222,7 +274,7 @@ static int xr_json_handle_number(void *ctx, const char *string,
   json->u.number.flags = 0;
 
   errno = 0;
-  json->u.number.i = yajl_parse_integer(
+  json->u.number.i = xr_json_parse_integer(
     (const unsigned char *)XR_JSON_NUMBER(json), strlen(XR_JSON_NUMBER(json)));
   if (errno == 0) {
     json->u.number.flags |= YAJL_NUMBER_INT_VALID;
@@ -241,16 +293,16 @@ static int xr_json_handle_string(void *ctx, const unsigned char *string,
                                  size_t string_length) {
   xr_json_t *json = xr_json_alloc(yajl_t_string);
   if (json == NULL) {
-    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, __func__ ": out of memory.");
+    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, "out of memory.");
   }
 
   json->u.string = malloc(string_length + 1);
   if (json->u.string == NULL) {
     free(json);
-    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, __func__ ": out of memory.");
+    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, "out of memory.");
   }
-  memcpy(v->u.string, string, string_length);
-  v->u.string[string_length] = 0;
+  memcpy(json->u.string, string, string_length);
+  json->u.string[string_length] = 0;
 
   return XR_JSON_CALLBACK_ADD_WRAP(ctx, json);
 }
@@ -258,7 +310,7 @@ static int xr_json_handle_string(void *ctx, const unsigned char *string,
 static int xr_json_handle_start_map(void *ctx) {
   xr_json_t *json = xr_json_alloc(yajl_t_object);
   if (json == NULL) {
-    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, __func__ ": out of memory.");
+    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, "out of memory.");
   }
   return XR_JSON_CALLBACK_RETURN_WRAP(
     xr_json_ctx_push(XR_JSON_CALLBACK_CTX_WRAP(ctx), json));
@@ -267,7 +319,7 @@ static int xr_json_handle_start_map(void *ctx) {
 static int xr_json_handle_start_array(void *ctx) {
   xr_json_t *json = xr_json_alloc(yajl_t_array);
   if (json == NULL) {
-    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, __func__ ": out of memory.");
+    return XR_JSON_CALLBACK_ERROR_WRAP(ctx, "out of memory.");
   }
   return XR_JSON_CALLBACK_RETURN_WRAP(
     xr_json_ctx_push(XR_JSON_CALLBACK_CTX_WRAP(ctx), json));
@@ -278,6 +330,8 @@ static int xr_json_handle_end_iterable(void *ctx) {
   return json == NULL ? STATUS_ABORT : XR_JSON_CALLBACK_ADD_WRAP(ctx, json);
 }
 
+#define XRN_JSON_PARSE_BUFFER 65535
+
 xr_json_t *xr_json_parse(FILE *json, xr_string_t *error) {
   static const yajl_callbacks callbacks = {
     .yajl_null = xr_json_handle_null,
@@ -286,13 +340,12 @@ xr_json_t *xr_json_parse(FILE *json, xr_string_t *error) {
     .yajl_string = xr_json_handle_string,
     .yajl_start_map = xr_json_handle_start_map,
     .yajl_map_key = xr_json_handle_string,
-    .yajl_end_map = xr_json_handel_end_iterable,
+    .yajl_end_map = xr_json_handle_end_iterable,
     .yajl_start_array = xr_json_handle_start_array,
     .yajl_end_array = xr_json_handle_end_iterable,
   };
 
-  const static size_t xr_json_parse_buffer_length = 65535;
-  static unsigned char buffer[xrn_config_parse_buffer_length];
+  static unsigned char buffer[XRN_JSON_PARSE_BUFFER];
 
   yajl_handle handle;
   yajl_status status;
@@ -312,11 +365,10 @@ xr_json_t *xr_json_parse(FILE *json, xr_string_t *error) {
   yajl_config(handle, yajl_allow_comments, 1);
 
   while (done == false) {
-    nread = fread(buffer, sizeof(unsigned char), xrn_config_parse_buffer_length,
-                  config);
+    nread = fread(buffer, sizeof(unsigned char), XRN_JSON_PARSE_BUFFER, json);
     if (nread == 0) {
-      if (ferror(config)) {
-        xr_json_ctx_error(ctx, __func__ ": read json file error.");
+      if (ferror(json)) {
+        _XR_JSON_CTX_ERROR(&ctx, "read json file error.");
         break;
       }
       done = true;
@@ -329,41 +381,43 @@ xr_json_t *xr_json_parse(FILE *json, xr_string_t *error) {
       status = yajl_parse(handle, buffer, nread);
     }
 
-    if (status != yajl_status_ok && status != yajl_status_insufficient_data) {
-      unsigned char *yajl_error = yajl_get_error(hand, 1, buffer, rd);
-      xr_json_ctx_error(ctx, yajl_error);
-      yajl_free_error(hand, yajl_error);
+    if (status != yajl_status_ok) {
+      unsigned char *yajl_error = yajl_get_error(handle, 1, buffer, nread);
+      _XR_JSON_CTX_ERROR(&ctx, yajl_error);
+      yajl_free_error(handle, yajl_error);
       xr_json_free(ctx.root);
       ctx.root == NULL;
       break;
     }
   }
-  xr_json_ctx_clean(&ctx);
+  xr_json_ctx_stack_clean(&ctx);
   yajl_free(handle);
   return ctx.root;
 }
 
 xr_json_t *xr_json_get_v(xr_json_t *json, const char *format, va_list ap) {
-  char *arg_type = format;
+  char *arg_type = (char *)format;
   xr_json_t *target = json;
   while (true) {
-    switch (arg_type) {
+    switch (*arg_type++) {
       case 's': {
         if (!XR_JSON_IS_OBJECT(target)) {
           return NULL;
         }
         const char *key = va_arg(ap, const char *);
-        const size_t len = XR_JSON_OBJECT(target)->len;
+        const size_t len = _XR_JSON_OBJECT(target)->len;
         bool found = false;
         for (size_t i = 0; i < len; ++i) {
-          if (!strcmp(key, XR_JSON_OBJECT(target)->keys[i])) {
-            target = XR_JSON_OBJECT(target)->values[i];
+          if (!strcmp(key, _XR_JSON_OBJECT(target)->keys[i])) {
+            target = _XR_JSON_OBJECT(target)->values[i];
             found = true;
             break;
           }
         }
         if (found == false) {
           return NULL;
+        } else {
+          break;
         }
       }
       case 'd': {
@@ -371,11 +425,12 @@ xr_json_t *xr_json_get_v(xr_json_t *json, const char *format, va_list ap) {
           return NULL;
         }
         long idx = va_arg(ap, long);
-        const size_t len = XR_JSON_OBJECT(target)->len;
+        const size_t len = _XR_JSON_ARRAY(target)->len;
         if (idx >= len) {
           return NULL;
         } else {
-          target = XR_JSON_ARRAY(target)->values[idx];
+          target = _XR_JSON_ARRAY(target)->values[idx];
+          break;
         }
       }
       case '\0':

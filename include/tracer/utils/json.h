@@ -22,6 +22,10 @@ typedef struct yajl_val_s xr_json_t;
 #define XR_JSON_IS_FALSE YAJL_IS_FALSE
 #define XR_JSON_IS_NULL YAJL_IS_NULL
 
+#define _XR_JSON_STRING(v) ((v)->u.string)
+#define _XR_JSON_OBJECT(v) (&(v)->u.object)
+#define _XR_JSON_ARRAY(v) (&(v)->u.array)
+
 #define XR_JSON_STRING YAJL_GET_STRING
 #define XR_JSON_NUMBER YAJL_GET_NUMBER
 #define XR_JSON_DOUBLE YAJL_GET_DOUBLE

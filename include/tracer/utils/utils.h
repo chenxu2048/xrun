@@ -8,6 +8,4 @@
 
 #define _XR_CALL(obj, _func, ...) _XR_CALLP(&obj, _func, __VA_ARGS__))
 
-#define _XR_ADD_FUNC(str) (__func__ ": " str "\n")
-
 #endif

@@ -11,10 +11,10 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
                      xr_tracer_result_t *result) {
   if (xr_tracer_setup(tracer, option) == false) {
     result->status = XR_RESULT_UNKNOWN;
-    return xr_tracer_error(tracer, _XR_ADD_FUNC("tracer setup failed."));
+    return _XR_TRACER_ERROR(tracer, "tracer setup failed.");
   }
   if (tracer->spwan(tracer) == false) {
-    return xr_tracer_error(tracer, _XR_ADD_FUNC("tracer spwan error."));
+    return _XR_TRACER_ERROR(tracer, "tracer spwan error.");
   }
   xr_trace_trap_t trap = {.trap = XR_TRACE_TRAP_NONE};
   while (true) {
@@ -28,7 +28,7 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
     }
 
     if (tracer->step(tracer, &trap) == false) {
-      xr_tracer_error(tracer, _XR_ADD_FUNC("tracer step failed."));
+      _XR_TRACER_ERROR(tracer, "tracer step failed.");
       break;
     }
   }
@@ -42,9 +42,8 @@ bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option) {
   _xr_list_for_each_entry(&(tracer->checkers), checker, xr_checker_t,
                           checkers) {
     if (checker->setup(checker, tracer) == false) {
-      return xr_tracer_error(tracer,
-                             _XR_ADD_FUNC("checker with id %d setup failed"),
-                             checker->checker_id);
+      return _XR_TRACER_ERROR(tracer, "checker with id %d setup failed",
+                              checker->checker_id);
     }
   }
   return true;

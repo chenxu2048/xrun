@@ -101,4 +101,7 @@ struct xr_error_s {
   xr_string_t msg;
 };
 
+#define _XR_TRACER_ERROR(tracer, msg, ...) \
+  (xr_tracer_error(tracer, "%s: " msg "\n", __func__, __VA_ARGS__))
+
 #endif

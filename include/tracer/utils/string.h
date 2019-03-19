@@ -24,7 +24,6 @@ static inline void xr_string_init(xr_string_t *str, int capacity) {
   str->capacity = capacity;
   str->length = 0;
   str->string[0] = 0;
-  return str;
 }
 
 /**
@@ -43,7 +42,7 @@ static inline void xr_string_delete(xr_string_t *str) {
  * @@str
  * @capacity new capacity of string
  */
-static inline void xr_string_grow(xr_string_t *str, int capcaity) {
+static inline void xr_string_grow(xr_string_t *str, int capacity) {
   if (capacity > str->capacity) {
     str->string = (char *)realloc(str->string, capacity);
     str->capacity = capacity;
@@ -101,7 +100,7 @@ static inline bool xr_string_start_with(xr_string_t *str, xr_string_t *head) {
   return strncmp(str->string, head->string, str->length) == 0;
 }
 
-static inline bool xr_string_equal(xr_string_t lhs, xr_string_t *rhs) {
+static inline bool xr_string_equal(xr_string_t *lhs, xr_string_t *rhs) {
   return lhs->length == rhs->length &&
          strncmp(lhs->string, rhs->string, lhs->length);
 }

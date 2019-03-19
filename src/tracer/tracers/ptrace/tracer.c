@@ -4,10 +4,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "tracer/utils/utils.h"
 #include "tracer/option.h"
 #include "tracer/tracer.h"
 #include "tracer/tracers/ptrace/tracer.h"
+#include "tracer/utils/utils.h"
 
 static inline bool __do_set_stdio(int stdio, int fd, int flag) {
   int fd_flag = fcntl(fd, F_GETFD);
@@ -24,7 +24,7 @@ static inline bool do_exec(xr_tracer_t *tracer, xr_entry_t *entry) {
   const flag = O_CREAT | O_TRUNC | O_WRONLY;
   for (int i = 0; i < 3； ++i) {
     if (__do_set_stdio(i, entry->stdio[i], i & flag) == false) {
-      xr_tracer_error(tracer, _XR_ADD_FUNC("dup file %d error."), i);
+      _XR_TRACER_ERROR(tracer, "dup file %d error.", i);
       return;
     }
   }
@@ -102,8 +102,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
   // open pipe for delivering error
   int error_pipe[2] = {};
   if (pipe2(error_pipe, O_CLOEXEC) == -1) {
-    return xr_tracer_error(
-      tracer, _XR_ADD_FUNC("ptrace_tracer popen error pipe failed."));
+    return _XR_TRACER_ERROR(tracer, "ptrace_tracer popen error pipe failed.");
   }
 
   // do fork here
@@ -111,7 +110,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
 
   // fork error
   if (fork_ret < 0) {
-    return xr_tracer_error(tracer, _XR_ADD_FUNC("ptrace_tracer vfork failed."));
+    return _XR_TRACER_ERROR(tracer, "ptrace_tracer vfork failed.");
   }
 
   // in child process
@@ -139,25 +138,22 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
 
   // error occurred.
   if (WIFEXITED(status)) {
-    xr_tracer_error(tracer, error.msg);
+    _XR_TRACER_ERROR(tracer, error.msg);
     errno = error.errno;
-    return xr_tracer_error(
-      tracer, _XR_ADD_FUNC("waiting first child %d failed."), fork_ret);
+    return _XR_TRACER_ERROR(tracer, "waiting first child %d failed.", fork_ret);
   }
 
   // set options here
   if (ptrace(PTRACE_SETOPTIONS, fork_ret, NULL,
              PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK |
                PTRACE_O_TRACEFORK) == 0) {
-    return xr_tracer_error(
-      tracer,
-      _XR_ADD_FUNC("ptrace tracer PTRACE_SETOPTIONS for process %d failed."),
+    return _XR_TRACER_ERROR(
+      tracer, "ptrace tracer PTRACE_SETOPTIONS for process %d failed.",
       fork_ret);
   }
 
   if (ptrace(PTRACE_SYSCALL, fork_ret, NULL, NULL)) {
-    return xr_tracer_error(
-      tracer, _XR_ADD_FUNC("ptrace tracer PTRACE_SYSCALL failed."));
+    return _XR_TRACER_ERROR(tracer, "ptrace tracer PTRACE_SYSCALL failed.");
   }
 
   xr_process_t *process = create_spawned_process(tracer, fork_ret);
@@ -184,7 +180,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   int status;
   pid_t pid = wait(&status);
   if (pid == -1) {
-    return xr_tracer_error(tracer, _XR_ADD_FUNC("waiting child failed."));
+    return _XR_TRACER_ERROR(tracer, "waiting child failed.");
   }
 
   // trap stopped thread
@@ -206,8 +202,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   }
 
   if (trap->process == NULL) {
-    return xr_tracer_error(
-      tracer, _XR_ADD_FUNC("unhandled process/thread %d found."), pid);
+    return _XR_TRACER_ERROR(tracer, "unhandled process/thread %d found.", pid);
   }
 
   if (WIFEXITED(status)) {
@@ -219,18 +214,16 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   } else {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
     if (get_syscall_info(trap) == false) {
-      return xr_tracer_error(
-        tracer,
-        _XR_ADD_FUNC("getting system call infomation of process %d failed."),
+      return _XR_TRACER_ERROR(
+        tracer, "getting system call infomation of process %d failed.",
         trap->process->pid);
     }
     __flip_thread_syscall_status(trap->thread);
   }
 
   if (get_resource_info(trap) == false) {
-    return xr_tracer_error(
-      tracer,
-      _XR_ADD_FUNC("getting resource information of process %d failed."),
+    return _XR_TRACER_ERROR(
+      tracer, "getting resource information of process %d failed.",
       trap->process->pid);
   }
 
@@ -251,10 +244,8 @@ bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
   while (true) {
     data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
     if (errno) {
-      return xr_tracer_error(
-        tracer,
-        _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed."), pid,
-        addr);
+      return _XR_TRACER_ERROR(
+        tracer, "ptrace_tracer peeking child %d data at %p failed.", pid, addr);
     }
     size_t need = min(sizeof(long) - offset, size);
     memcpy(buffer, *data + offset, need);
@@ -305,10 +296,8 @@ bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
   while (true) {
     data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
     if (errno) {
-      return xr_tracer_error(
-        tracer,
-        _XR_ADD_FUNC("ptrace_tracer peeking child %d data at %p failed."), pid,
-        addr);
+      return _XR_TRACER_ERROR(
+        tracer, "ptrace_tracer peeking child %d data at %p failed.", pid, addr);
     }
     size_t need = sizeof(long) - offset;
     void *term = memchr(data + offset, '\0', need);
