@@ -9,7 +9,7 @@ ABI=$(grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | tail -1 | cut -f2)
 
 
 grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
-  echo "#include \"tracer/calls.h\""
+  echo "#include \"xrun/calls.h\""
   echo
   echo "/* call table mapping */"
   if [ "$ABI" = "i386" ]; then

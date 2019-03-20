@@ -7,7 +7,7 @@ CALL_ENTRIES=$(grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | tail -1 |
 
 # calls table mapping call number to name string
 grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
-  echo "#include \"tracer/calls.h\""
+  echo "#include \"xrun/calls.h\""
   echo
   echo "/* system call mapping table for arm (both eabi and oabi) */"
   echo "const char *xr_syscall_table_arm[XR_SYSCALL_MAX] = {"
