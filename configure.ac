@@ -6,6 +6,8 @@ AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADERS([config.h])
 
+AM_INIT_AUTOMAKE([foreign])
+
 # Checks for programs.
 AC_PROG_CC
 
@@ -27,4 +29,7 @@ AC_FUNC_STRTOD
 AC_FUNC_FORK
 AC_CHECK_FUNCS([memchr memset strtol])
 
+AC_CONFIG_FILES([Makefile
+                 tools/arm/Makefile
+                 tools/x86/Makefile])
 AC_OUTPUT
