@@ -2,6 +2,7 @@
 #define XR_LIST_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 struct xr_list_s;
 

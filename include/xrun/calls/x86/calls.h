@@ -3,16 +3,16 @@
 
 #include <string.h>
 
-#include "./calls_32.h"
-
 #include "./calls_64.h"
+
+#include "./calls_32.h"
 
 #define XR_SYSCALL_X86_COMPAT_X64 0
 #define XR_SYSCALL_X86_COMPAT_X32 1
 #define XR_SYSCALL_X86_COMPAT_IA32 2
 
 static inline int xr_calls_convert_ia32_impl(const char *name) {
-  for (int i = 0; i <= XR_SYSCALL_IA32_MAX; ++i) {
+  for (int i = 0; i <= XR_IA32_SYSCALL_MAX; ++i) {
     if (strcmp(name, xr_syscall_table_ia32[i]) == 0) {
       return i;
     }
@@ -51,7 +51,7 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
   return -1;
 }
 
-#if !defined(XR_ARCH_X64) && !defined(XR_ARCH_X32)
+#if !defined(XR_ARCH_X64) && !defined(XR_ARCH_X64_X32)
 #undef XR_CALLS_CONVERT
 #define XR_CALLS_CONVERT(name, compat) xr_calls_convert_ia32_impl(name)
 #endif

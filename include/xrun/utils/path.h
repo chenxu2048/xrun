@@ -6,11 +6,13 @@
 #include "xrun/utils/string.h"
 #include "xrun/utils/utils.h"
 
+#define XR_PATH_MAX 4096
+
 typedef xr_string_t xr_path_t;
 
 #define xr_path_delete xr_string_delete;
 
-const static xr_path_t xr_path_slash = {
+static xr_path_t xr_path_slash = {
   .capacity = 2,
   .length = 1,
   .string = "/",
@@ -28,7 +30,7 @@ static inline void xr_path_join(xr_path_t *parent, xr_path_t *child) {
   xr_string_concat(parent, child);
 }
 
-static inline void xr_path_is_relative(xr_path_t *path) {
+static inline bool xr_path_is_relative(xr_path_t *path) {
   return path->string[0] != '/';
 }
 

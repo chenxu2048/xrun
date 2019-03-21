@@ -4,6 +4,7 @@ IN=$1
 HEADER=$2
 
 CALL_ENTRIES=$(grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | tail -1 | cut -f1)
+CALL_ENTRIES=$(expr $CALL_ENTRIES + 1)
 
 # marco define
 grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (

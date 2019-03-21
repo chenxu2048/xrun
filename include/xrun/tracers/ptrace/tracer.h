@@ -12,17 +12,17 @@ typedef struct xr_trace_trap_s xr_trace_trap_t;
 
 bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer);
 
-bool xr_ptrace_tracer_step(xr_tracer_t *tracer);
+bool xr_ptrace_tracer_step(xr_tracer_t *tracer, xr_trace_trap_t *trap);
 
-xr_trace_trap_t xr_ptrace_tracer_trap(xr_tracer_t *tracer);
+bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap);
 
 bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
-                          char *buffer, size_t size);
+                          void *buffer, size_t size);
 
 bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
-                          const char *buffer, size_t size);
+                          const void *buffer, size_t size);
 
-xr_string_t *xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
-                              size_t max_size);
+bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
+                      xr_string_t *str);
 
 #endif

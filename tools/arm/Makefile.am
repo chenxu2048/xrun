@@ -1,13 +1,19 @@
-all: arm_calls_header arm_calls_src
-
 SRCDIR = $(top_srcdir)/src/xrun/calls/arm
 TBLDIR = $(srcdir)
 HDRDIR = $(top_srcdir)/include/xrun/calls/arm
 
-arm_calls_header: mksrc.sh $(TBLDIR)/arm.tbl
-	echo "Making calls.h for arm."
-	sh mkhdr.sh $(TBLDIR)/arm.tbl $(HDRDIR)/calls_arm.h
+MKHDR = $(srcdir)/mkhdr.sh
+MKSRC = $(srcdir)/mksrc.sh
 
-arm_calls_src: mksrc.sh $(TBLDIR)/arm.tbl
+all: $(HDRDIR)/calls_arm.h $(SRCDIR)/calls.c
+
+$(HDRDIR)/calls_arm.h: $(MKHDR) $(TBLDIR)/arm.tbl
+	echo "Making calls.h for arm."
+	sh $(MKHDR) $(TBLDIR)/arm.tbl $(HDRDIR)/calls_arm.h
+
+$(SRCDIR)/calls.c: $(MKSRC) $(TBLDIR)/arm.tbl
 	echo "Making calls.c for arm."
-	sh mksrc.sh $(TBLDIR)/arm.tbl $(SRCDIR)/calls.c
+	sh $(MKSRC) $(TBLDIR)/arm.tbl $(SRCDIR)/calls.c
+
+clean:
+	rm -f $(HDRDIR)/calls_arm.h $(SRCDIR)/calls.c

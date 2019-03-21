@@ -1,4 +1,3 @@
-#include xrunc / "xrunc/
 #include <stdio.h>
 
 #include <getopt.h>
@@ -25,13 +24,13 @@ static size_t n_dir_access = 0;
 static char *file_access[_XRN_ACCESS_ENTRY] = {};
 static size_t n_file_access = 0;
 
-#define XRN_OPTION_ERROR(msg, ...)                                   \
-  do {                                                               \
-    char errbuf[256];                                                \
-    errbuf[0] = '\0';                                                \
-    size_t errsize =                                                 \
-      snprintf(errbuf, 256, "%s: " msg "\n", __func__, __VA_ARGS__); \
-    xr_string_concat_raw(&xrn_error, errbuf, errsize);               \
+#define XRN_OPTION_ERROR(msg, ...)                                     \
+  do {                                                                 \
+    char errbuf[256];                                                  \
+    errbuf[0] = '\0';                                                  \
+    size_t errsize =                                                   \
+      snprintf(errbuf, 256, "%s: " msg "\n", __func__, ##__VA_ARGS__); \
+    xr_string_concat_raw(&xrn_error, errbuf, errsize);                 \
   } while (0)
 
 static xr_string_t xrn_error;
@@ -44,88 +43,77 @@ static xr_time_ms_t time;
 
 #define XR_FILE_LIMIT_SIZE 128
 
-const static struct xrn_option options[] = {
+static struct xrn_option options[] = {
   {
-    {"config", requried_argument, NULL, 'c'},
+    {"config", required_argument, NULL, 'c'},
     "Tracee configuration in json.",
     NULL,
     "config_path",
-    NULL,
   },
   {
-    {"call", requried_argument, NULL, 'C'},
+    {"call", required_argument, NULL, 'C'},
     "Permitted syscall number which can be name or number",
     NULL,
     "N|name",
-    NULL,
   },
   {
-    {"directory", requried_argument, NULL, 'd'},
+    {"directory", required_argument, NULL, 'd'},
     "Directory can be accessed. Note that colon(:) in path should be "
     "escaped "
     "as \\:",
     NULL,
     "path:[+]flags",
-    NULL,
   },
   {
-    {"file", requried_argument, NULL, 'f'},
+    {"file", required_argument, NULL, 'f'},
     "Same as --directory, but for files.",
     NULL,
     NULL,
-    NULL,
   },
   {
-    {"fork", optionnal_argument, NULL, 'F'},
+    {"fork", optional_argument, NULL, 'F'},
     "Enable fork and set process number limitation.",
     "1",
     "N",
-    NULL,
   },
   {
     {"help", no_argument, NULL, 'h'},
     "Help information",
     NULL,
     NULL,
-    NULL,
   },
   {
-    {"memory", requried_argument, NULL, 'm'},
+    {"memory", required_argument, NULL, 'm'},
     "Memory limitation in byte.",
     NULL,
     "memory",
-    NULL,
   },
   {
     {"nfile", required_argument, NULL, 'n'},
     "Opened files limitation.",
     NULL,
     "N",
-    NULL,
   },
   {
     {"time", required_argument, NULL, 't'},
-    "Time limitation in millisecond." NULL,
-    "N",
+    "Time limitation in millisecond.",
     NULL,
+    "N",
   },
   {
     {"thread", required_argument, NULL, 'T'},
     "Thread number limitation.",
     NULL,
     "N",
-    NULL,
   },
   {
     {"version", no_argument, NULL, 'v'},
     "version information of xrun.",
     NULL,
     NULL,
-    NULL,
   },
   {
     {NULL, 0, NULL, 0},
-    NULL,
     NULL,
     NULL,
     NULL,
@@ -142,13 +130,15 @@ const static struct xrn_option options[] = {
     }                                                             \
   } while (0)
 
-void xrn_parse_opt(int argc, const char *argv[]) {
+void xrn_parse_opt(int argc, char *const argv[]) {
   int option_index = 0;
   opterr = 0;
   xr_string_t error;
   xr_string_init(&error, 256);
+  char *option_short = xrn_make_short_option(options);
+  struct option *option = xrn_make_option(options);
   while (1) {
-    int opt = getopt_long(argc, argv, option_short, options, &option_index);
+    int opt = getopt_long(argc, argv, option_short, option, &option_index);
     switch (opt) {
       case -1:
         return;
@@ -213,13 +203,13 @@ void xrn_parse_opt(int argc, const char *argv[]) {
   }
 }
 
-int main(int argc, const char *argv[]) {
+int main(int argc, char *const argv[]) {
   xrn_parse_opt(argc, argv);
   if (help == true) {
-    xrn_print_options(&options);
+    xrn_print_options(options);
   }
   if (retval == 1) {
-    fputs(error.string, stderr);
+    fputs(xrn_error.string, stderr);
   } else {
   }
 }

@@ -3,7 +3,20 @@
 
 #define CLONE_FLAG_ARGS 1
 
-#include "xrun/checker/fork_checker.h"
+#include "xrun/calls.h"
+#include "xrun/checkers/fork_checker.h"
+#include "xrun/option.h"
+#include "xrun/tracer.h"
+
+#ifndef XR_SYSCALL_VFORK
+#define XR_SYSCALL_VFORK -1
+#endif
+#ifndef XR_SYSCALL_FORK
+#define XR_SYSCALL_FORK -1
+#endif
+#ifndef XR_SYSCALL_CLONE
+#define XR_SYSCALL_CLONE -1
+#endif
 
 void xr_fork_checker_init(xr_checker_t *checker) {
   checker->setup = xr_fork_checker_setup;
@@ -11,7 +24,6 @@ void xr_fork_checker_init(xr_checker_t *checker) {
   checker->result = xr_fork_checker_result;
   checker->_delete = xr_fork_checker_delete;
   checker->checker_id = XR_CHECKER_FORK;
-  checker->data = _XR_NEW(struct xr_fork_checker_pricate_s);
 }
 
 bool xr_fork_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
@@ -30,7 +42,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   bool fork = false, clone_files = false;
 
   if (syscall != XR_SYSCALL_CLONE || syscall != XR_SYSCALL_FORK ||
-      syscall != XR_SYSCALL_VFORK || retval == 0) {
+      syscall != XR_SYSCALL_VFORK || tid == 0) {
     // not a clone, fork, vfork syscall
     // or, callee syscall return.
     // checking
@@ -49,7 +61,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
     fork = true;
   }
 
-  xr_thread_t thread = _XR_NEW(xr_thread_t);
+  xr_thread_t *thread = _XR_NEW(xr_thread_t);
   thread->tid = tid;
   thread->tid = XR_THREAD_CALLIN;
   // thread will return from fork or clone, so should be XR_THREAD_CALLIN
@@ -73,7 +85,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 
   if (tracer->nprocess > tracer->option->nprocess ||
       tracer->nthread > tracer->option->limit.nthread ||
-      process->nprocess > tracer->option->limit_per_process.nthread) {
+      thread->process->nthread > tracer->option->limit_per_process.nthread) {
     return false;
   }
 

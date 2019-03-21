@@ -2,7 +2,7 @@
 #define XR_RESOURCE_CHECKER_H
 
 #include "xrun/checker.h"
-#include "xrun/utils/utils.hs"
+#include "xrun/utils/utils.h"
 
 bool xr_resource_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer);
 

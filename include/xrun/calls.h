@@ -2,7 +2,9 @@
 #define XR_CALLS_H
 
 #include "config.h"
-
+#define XR_ARCH_X64
+#define XR_ARCH_X64_X32
+#define XR_ARCH_X64_X86
 #define XR_CALLS_CONVERT(str, compat) xr_calls_convert_impl(str, compat)
 static int xr_calls_convert_impl(const char *name, int compat);
 

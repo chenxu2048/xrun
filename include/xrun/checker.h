@@ -10,6 +10,13 @@ typedef struct xr_tracer_s xr_tracer_t;
 typedef struct xr_tracer_result_s xr_tracer_result_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
 
+enum xr_checker_id_e {
+  XR_CHECKER_FILE,
+  XR_CHECKER_FORK,
+  XR_CHECKER_SYSCALL,
+  XR_CHECKER_RESOURCE
+};
+
 typedef enum xr_checker_id_e xr_checker_id_t;
 
 typedef bool xr_checker_check_f(xr_checker_t *checker, xr_tracer_t *tracer,
@@ -30,13 +37,6 @@ struct xr_checker_s {
   xr_checker_setup_f *setup;
   xr_checker_delete_f *_delete;
   void *checker_data;
-};
-
-enum xr_checker_id_e {
-  XR_CHECKER_FILE,
-  XR_CHECKER_FORK,
-  XR_CHECKER_SYSCALL,
-  XR_CHECKER_RESOURCE
 };
 
 #endif

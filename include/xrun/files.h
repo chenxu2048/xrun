@@ -123,7 +123,9 @@ static inline void xr_file_set_own(xr_file_set_t *fset) {
   xr_file_t *file;
   xr_list_init(&(data->files));
   _xr_list_for_each_entry_r(&(fset->data->files), file, xr_file_t, files) {
-    xr_list_add(&(data->files), &(xr_file_dup(file, file->fd)->files));
+    xr_file_t *dfile = _XR_NEW(xr_file_t);
+    xr_file_dup(file, dfile, file->fd);
+    xr_list_add(&data->files, &dfile->files);
   }
 
   fset->own = true;
@@ -171,7 +173,7 @@ static inline void xr_file_set_remove_file(xr_file_set_t *fset,
   xr_list_del(&(file->files));
   xr_file_delete(file);
   free(file);
-  fset->data.file_holding--;
+  fset->data->file_holding--;
 }
 
 #define xr_file_set_set_read(fset, read) \
@@ -195,10 +197,10 @@ static inline void xr_fs_share(xr_fs_t *fs, xr_fs_t *sfs) {
 static inline void xr_fs_own(xr_fs_t *fs) {
   if (fs->own == false) {
     xr_path_t *pwd = _XR_NEW(xr_path_t);
-    xr_string_init(pwd, fs->pwd->length);
-    xr_string_copy(pwd, sfs->pwd);
-    sfs->own = true;
-    sfs->pwd = false;
+    xr_string_init(pwd, fs->pwd->length + 1);
+    xr_string_copy(pwd, fs->pwd);
+    fs->own = true;
+    fs->pwd = pwd;
   }
 }
 

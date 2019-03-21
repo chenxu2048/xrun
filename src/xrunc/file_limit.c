@@ -12,7 +12,7 @@ struct xrn_file_flag {
   const char *name;
 };
 
-static const xrn_file_flag xrn_file_flags[] = {
+static const struct xrn_file_flag xrn_file_flags[] = {
   {.flag = O_RDONLY, .name = "O_RDONLY"},
   {.flag = O_WRONLY, .name = "O_WRONLY"},
   {.flag = O_RDWR, .name = "O_RDWR"},
@@ -84,14 +84,14 @@ int xrn_find_flag(char *flag, size_t len) {
 
 bool xrn_parse_file_limit_flag(const char *flags, xr_file_limit_t *flimit) {
   int flags_ = 0;
-  char *end = flags;
+  char *end = (char *)flags;
   if (isdigit(flags)) {
-    flags_ = strtoi(flags, &end, 10);
+    flags_ = strtol(flags, &end, 10);
     if (*end != '\0') {
       return false;
     }
   } else {
-    char *start = flags;
+    char *start = (char *)flags;
     while (*end != '\0') {
       if (*end == '|') {
         int flag = xrn_find_flag(start, end - start);
@@ -110,10 +110,10 @@ bool xrn_parse_file_limit_flag(const char *flags, xr_file_limit_t *flimit) {
 }
 
 bool xrn_read_file_limit(const char *path, xr_file_limit_t *flimit) {
-  char *flag = path;
+  const char *flag = path;
   enum xr_file_access_mode mode = XR_FILE_ACCESS_MATCH;
   while (*flag != '\0') {
-    if (*flag == ':' && flag != path && *(flag - 1) = '\\') {
+    if (*flag == ':' && flag != path && *(flag - 1) == '\\') {
       break;
     }
   }

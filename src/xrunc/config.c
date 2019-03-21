@@ -1,22 +1,21 @@
-#include xrunc / o.h >
-
 #include "xrun/utils/json.h"
 #include "xrun/utils/string.h"
 
 #include "xrunc/config.h"
 #include "xrunc/file_limit.h"
 
-#define XRN_CONFIG_ERROR(error, msg, ...)                            \
-  do {                                                               \
-    char errbuf[512];                                                \
-    errbuf[0] = 0;                                                   \
-    size_t n = snprintf(errbuf, 512, __func__ ":" msg, __VA_ARGS__); \
-    xr_string_concat_raw(error, errmsg, n);                          \
+#define XRN_CONFIG_ERROR(error, msg, ...)                                 \
+  do {                                                                    \
+    char errbuf[512];                                                     \
+    errbuf[0] = 0;                                                        \
+    size_t n = snprintf(errbuf, 512, "%s:" msg, __func__, ##__VA_ARGS__); \
+    xr_string_concat_raw(error, errbuf, n);                               \
   } while (0)
 
 static inline bool xrn_config_parse_access_entry(xr_json_t *entry,
                                                  const char *name, size_t index,
-                                                 xr_file_limit_t *limit) {
+                                                 xr_file_limit_t *limit,
+                                                 xr_string_t *error) {
   if (entry == NULL || !XR_JSON_IS_OBJECT(entry)) {
     XRN_CONFIG_ERROR(error, "%s entry %ld type error", name, index);
     return false;
@@ -32,13 +31,13 @@ static inline bool xrn_config_parse_access_entry(xr_json_t *entry,
                      index);
     return false;
   } else {
-    size_t path_len = strlen(XR_JSON_STRING(path));
+    size_t path_len = strlen(path->u.string);
     xr_string_init(&(limit->path), path_len + 1);
     xr_string_concat_raw(&(limit->path), XR_JSON_STRING(path), path_len);
   }
 
   // get flag option
-  xr_json_t flags = xr_json_get(entry, "s", "flags");
+  xr_json_t *flags = xr_json_get(entry, "s", "flags");
   if (flags == NULL) {
     XRN_CONFIG_ERROR(error, "%s entry %ld key \"flags\" not found", name,
                      index);
@@ -61,7 +60,7 @@ static inline bool xrn_config_parse_access_entry(xr_json_t *entry,
     return false;
   }
 
-  xr_json_t match = xr_json_get(entry, "s", "match");
+  xr_json_t *match = xr_json_get(entry, "s", "match");
   if (match == NULL || XR_JSON_IS_FALSE(match)) {
     limit->mode = XR_FILE_ACCESS_CONTAIN;
   } else if (XR_JSON_IS_TRUE(match)) {
@@ -77,14 +76,15 @@ static inline bool xrn_config_parse_access_entry(xr_json_t *entry,
 static inline bool xrn_config_parse_access_list(xr_json_t *config,
                                                 const char *name,
                                                 xr_file_limit_t **limits,
-                                                int *nentries) {
+                                                int *nentries,
+                                                xr_string_t *error) {
   if (config == NULL) {
     return true;
   } else if (!XR_JSON_IS_ARRAY(config)) {
     XRN_CONFIG_ERROR(error, "%s must be list", name);
   }
   const size_t list_size = XR_JSON_ARRAY(config)->len;
-  if (len == 0) {
+  if (list_size == 0) {
     return true;
   }
   size_t resize = *nentries + list_size;
@@ -96,7 +96,8 @@ static inline bool xrn_config_parse_access_list(xr_json_t *config,
   }
   for (size_t i = 0; i < list_size; ++i) {
     if (xrn_config_parse_access_entry(XR_JSON_ARRAY(config)->values[i], name, i,
-                                      limit_new + i + *nentries) == false) {
+                                      limit_new + i + *nentries,
+                                      error) == false) {
       XRN_CONFIG_ERROR(error, "parse %s entry error", name);
       return false;
     }
@@ -108,8 +109,6 @@ static inline bool xrn_config_parse_access_list(xr_json_t *config,
 
 bool xrn_config_parse(const char *config_path, xr_option_t *option,
                       xr_string_t *error) {
-  const static xrn_config_parse_buffer_length = 65535;
-  static unsigned char buffer[xrn_config_parse_buffer_length];
   bool retval = false;
   FILE *config_file = fopen(config_path, "r");
   xr_json_t *config = xr_json_parse(config_file, error);
@@ -118,12 +117,12 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
   }
   xr_json_t *access = xr_json_get(config, "s", "files");
   if (xrn_config_parse_access_list(access, "files", &(option->file_access),
-                                   &(option->n_file_access)) == false) {
+                                   &(option->n_file_access), error) == false) {
     goto config_error;
   }
   access = xr_json_get(config, "s", "directories");
   if (xrn_config_parse_access_list(access, "directories", &(option->dir_access),
-                                   &(option->n_dir_access)) == false) {
+                                   &(option->n_dir_access), error) == false) {
     goto config_error;
   }
 
@@ -171,10 +170,11 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
     XRN_CONFIG_ERROR(error, "limit.time is required.");
     goto config_error;
   } else if (XR_JSON_IS_INTEGER(time)) {
-    option->limit.time = option->limit_per_process.time = {
+    xr_time_t config_time = {
       XR_JSON_INTEGER(time),
       XR_JSON_INTEGER(time),
     };
+    option->limit.time = option->limit_per_process.time = config_time;
   } else {
     XRN_CONFIG_ERROR(error, "limit.time is not a integer");
     goto config_error;

@@ -54,3 +54,11 @@ dkms.conf
 
 /.vscode
 build
+
+.dep/
+Makefile
+Makefile.in
+/configure
+*.log
+*.cache
+configure.scan

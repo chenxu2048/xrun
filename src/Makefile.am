@@ -1,1 +1,1 @@
-SUBDIRS = xrun
+SUBDIRS = xrun xrunc

@@ -28,8 +28,8 @@ typedef bool xr_tracer_op_get_f(xr_tracer_t *tracer, int pid, void *address,
 typedef bool xr_tracer_op_set_f(xr_tracer_t *tracer, int pid, void *address,
                                 const void *buffer, size_t size);
 
-typedef xr_string_t *xr_tracer_op_strcpy_f(xr_tracer_t *tracer, int pid,
-                                           void *address, size_t max_size);
+typedef bool xr_tracer_op_strcpy_f(xr_tracer_t *tracer, int pid, void *address,
+                                   xr_string_t *str);
 
 typedef void xr_tracer_op_kill_f(xr_tracer_t *tracer, int pid);
 
@@ -61,7 +61,7 @@ struct xr_trace_trap_s {
 struct xr_tracer_s {
   const char *name;
 
-  struct xr_tracer_operation {
+  struct {
     xr_tracer_op_spawn_f *spwan;
     xr_tracer_op_step_f *step;
     xr_tracer_op_trap_f *trap;
@@ -80,7 +80,6 @@ struct xr_tracer_s {
   xr_list_t checkers;
 
   xr_checker_t *failed_checker;
-  xr_trace_trap_t *trap;
 
   xr_error_t *error;
 };
@@ -89,19 +88,20 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
                      xr_tracer_result_t *result);
 
 bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option);
-bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result);
+bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result,
+                     xr_trace_trap_t *trap);
 void xr_tracer_clean(xr_tracer_t *tracer);
 
-bool xr_tracer_error(xr_tracer_t *tracer, const char *msg);
+bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...);
 
 void xr_tracer_delete(xr_tracer_t *tracer);
 
 struct xr_error_s {
-  int errno;
+  int eno;
   xr_string_t msg;
 };
 
 #define _XR_TRACER_ERROR(tracer, msg, ...) \
-  (xr_tracer_error(tracer, "%s: " msg "\n", __func__, __VA_ARGS__))
+  (xr_tracer_error(tracer, "%s: " msg "\n", __func__, ##__VA_ARGS__))
 
 #endif

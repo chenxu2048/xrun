@@ -1,9 +1,16 @@
+#include <stdbool.h>
+#include <stdlib.h>
+
+#define _GNU_SOURCE
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
+#include "xrun/calls.h"
 #include "xrun/option.h"
 #include "xrun/tracer.h"
 #include "xrun/tracers/ptrace/tracer.h"
@@ -16,22 +23,23 @@ static inline bool __do_set_stdio(int stdio, int fd, int flag) {
   }
   fd_flag &= ~O_CLOEXEC;
   /* try dup fd to stdio */
-  return dup3(fd, stdio, fd_flag) != -1;
+  return dup2(fd, stdio) != -1 && fcntl(stdio, F_SETFD, fd_flag) != 1;
 }
 
 static inline bool do_exec(xr_tracer_t *tracer, xr_entry_t *entry) {
   ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-  const flag = O_CREAT | O_TRUNC | O_WRONLY;
-  for (int i = 0; i < 3； ++i) {
+  const int flag = O_CREAT | O_TRUNC | O_WRONLY;
+  for (int i = 0; i < 3; ++i) {
     if (__do_set_stdio(i, entry->stdio[i], i & flag) == false) {
       _XR_TRACER_ERROR(tracer, "dup file %d error.", i);
-      return;
+      return false;
     }
   }
 }
 
 static inline bool rlimit_cpu_time(xr_time_t time) {
-  struct rlimit rlimit = {.rlim_cur = time / 1000, .rlim_max = time / 1000 + 1};
+  struct rlimit rlimit = {.rlim_cur = time.user_time / 1000,
+                          .rlim_max = time.user_time / 1000 + 1};
   return setrlimit(RLIMIT_CPU, &rlimit) != 0;
 }
 
@@ -43,8 +51,8 @@ static inline bool rlimit_memory(int memory) {
 }
 
 static inline bool do_rlimit_setup(xr_option_t *option) {
-  return rlimit_memory(option.limit_per_process.memory) &&
-         rlimit_cpu_time(option.limit_per_process.sys_time);
+  return rlimit_memory(option->limit_per_process.memory) &&
+         rlimit_cpu_time(option->limit_per_process.time);
 }
 
 static bool get_syscall_info(xr_trace_trap_t *trap) {
@@ -53,12 +61,12 @@ static bool get_syscall_info(xr_trace_trap_t *trap) {
 
 static bool get_resource_info(xr_trace_trap_t *trap) {
   struct rusage resource;
-  if (getrusage(trap->thread->tid, &rusage) == -1) {
+  if (getrusage(trap->thread->tid, &resource) == -1) {
     return false;
   }
-  trap->process.time =
+  trap->process->time =
     xr_time_from_timeval(resource.ru_stime, resource.ru_utime);
-  trap->process.memory = resource.ru_maxrss;
+  trap->process->memory = resource.ru_maxrss;
   return true;
 }
 
@@ -87,8 +95,8 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
 
 #define __XR_PTRACE_TRACER_PIPE_ERR 256
 
-static struct __xr_ptrace_tracer_pipe_info {
-  int errno;
+struct __xr_ptrace_tracer_pipe_info {
+  int eno;
   char msg[__XR_PTRACE_TRACER_PIPE_ERR];
 };
 
@@ -101,7 +109,9 @@ static struct __xr_ptrace_tracer_pipe_info {
 bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
   // open pipe for delivering error
   int error_pipe[2] = {};
-  if (pipe2(error_pipe, O_CLOEXEC) == -1) {
+  if (pipe(error_pipe) == -1 ||
+      fcntl(error_pipe[0], F_SETFD, O_CLOEXEC) == -1 ||
+      fcntl(error_pipe[1], F_SETFD, O_CLOEXEC) != -1) {
     return _XR_TRACER_ERROR(tracer, "ptrace_tracer popen error pipe failed.");
   }
 
@@ -115,14 +125,14 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
 
   // in child process
   if (fork_ret == 0) {
-    do_exec(tracer);
+    do_exec(tracer, NULL);
 
     // exec failed. die here
     // send tracer->error into pipe
     struct __xr_ptrace_tracer_pipe_info error = {
-      .errno = tracer->error->errno,
+      .eno = tracer->error->eno,
     };
-    strncpy(error.msg, tracer->error->msg, __XR_PTRACE_TRACER_PIPE_ERR);
+    strncpy(error.msg, tracer->error->msg.string, __XR_PTRACE_TRACER_PIPE_ERR);
     write(error_pipe[1], &error, sizeof(error));
     _exit(1);
   }
@@ -138,8 +148,8 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
 
   // error occurred.
   if (WIFEXITED(status)) {
-    _XR_TRACER_ERROR(tracer, error.msg);
-    errno = error.errno;
+    xr_tracer_error(tracer, error.msg);
+    errno = error.eno;
     return _XR_TRACER_ERROR(tracer, "waiting first child %d failed.", fork_ret);
   }
 
@@ -156,9 +166,9 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
     return _XR_TRACER_ERROR(tracer, "ptrace tracer PTRACE_SYSCALL failed.");
   }
 
-  xr_process_t *process = create_spawned_process(tracer, fork_ret);
+  xr_thread_t *thread = create_spawned_process(tracer, fork_ret);
 #if (__X86_64__) || defined(__X86__) || defined(__X32__)
-  if (detect_arch(process) == false) {
+  if (detect_arch(thread) == false) {
     return false;
   }
 #endif
@@ -247,8 +257,8 @@ bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
       return _XR_TRACER_ERROR(
         tracer, "ptrace_tracer peeking child %d data at %p failed.", pid, addr);
     }
-    size_t need = min(sizeof(long) - offset, size);
-    memcpy(buffer, *data + offset, need);
+    size_t need = XR_MIN(sizeof(long) - offset, size);
+    memcpy(buffer, data + offset, need);
     addr += sizeof(long);
     buffer += sizeof(long);
     size -= need;
@@ -268,9 +278,9 @@ bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
   long data_ = 0;
   void *data = (void *)&data_;
   while (true) {
-    size_t need = min(sizeof(long) - offset, rest);
+    size_t need = XR_MIN(sizeof(long) - offset, rest);
     if (need < sizeof(long)) {
-      data = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
+      data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
     }
     memcpy((void *)(addr + offset), buffer, need);
 
@@ -285,7 +295,7 @@ bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
 }
 
 bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
-                      size_t max_size, xr_string_t *str) {
+                      xr_string_t *str) {
   str->length = 0;
   // aligned address in kernel
   long addr = (long)address & __xr_address_align;
@@ -302,7 +312,7 @@ bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
     size_t need = sizeof(long) - offset;
     void *term = memchr(data + offset, '\0', need);
     if (term != NULL) {
-      need = term - data - offset;
+      need = term - (void *)data - offset;
     }
     xr_string_concat_raw(str, data + offset, need);
 

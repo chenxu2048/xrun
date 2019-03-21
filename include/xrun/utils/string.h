@@ -2,6 +2,7 @@
 #define XR_STRING_H
 
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -107,11 +108,11 @@ static inline bool xr_string_equal(xr_string_t *lhs, xr_string_t *rhs) {
 
 static inline void xr_string_format(xr_string_t *str, const char *format, ...) {
   va_list args;
-  va_start(format, args);
+  va_start(args, format);
   int wrote = vsnprintf(str->string, str->capacity - 1, format, args);
   va_end(args);
   if (wrote >= str->capacity) {
-    va_start(format, args);
+    va_start(args, format);
     xr_string_grow(str, wrote + 1);
     vsnprintf(str->string, str->capacity - 1, format, args);
     va_end(args);

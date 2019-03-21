@@ -1,9 +1,9 @@
-#includ xrun / "xrun/" xrun /
 #include <stdbool.h>
 #include <stdlib.h>
 
 #include "xrun/checker.h"
 #include "xrun/process.h"
+#include "xrun/result.h"
 #include "xrun/tracer.h"
 #include "xrun/utils/utils.h"
 
@@ -54,7 +54,7 @@ bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result,
   xr_checker_t *checker;
   _xr_list_for_each_entry(&(tracer->checkers), checker, xr_checker_t,
                           checkers) {
-    if (_XR_CALLP(checker, check, tracer, result, trap)) {
+    if (_XR_CALLP(checker, check, tracer, trap)) {
       tracer->failed_checker = checker;
       return false;
     };
@@ -74,9 +74,6 @@ void xr_tracer_clean(xr_tracer_t *tracer) {
     free(process);
   }
 
-  // all the thread were deleted.
-  tracer->threads.next = tracer->threads.prev = &(tracer->threads);
-
   tracer->failed_checker = NULL;
 }
 
@@ -92,29 +89,25 @@ void xr_tracer_delete(xr_tracer_t *tracer) {
   }
   // clean up all process
   xr_tracer_clean(tracer);
-
-  tracer->_delete(tracer);
 }
 
 bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...) {
   xr_error_t *error = tracer->error;
-  xr_string_t *emsg = error->msg;
-  xr_string_t buffer;
-  xr_string_init(&buffer, strlen(msg) * 2);
-  xr_string_format(&buffer, msg, ) if (errno) {
-    error->errno = errno;
+  xr_string_t *emsg = &error->msg;
+  if (errno) {
+    error->eno = errno;
   }
   size_t rest = emsg->capacity - emsg->length - 1;
   va_list args;
-  va_start(msg, args);
-  int wrote = vsnprintf(emsg->string + emsg->length, rest, format, args);
+  va_start(args, msg);
+  int wrote = vsnprintf(emsg->string + emsg->length, rest, msg, args);
   va_end(args);
 
   if (wrote >= rest) {
     // retry
-    va_start(msg, args);
+    va_start(args, msg);
     xr_string_grow(emsg, emsg->length + wrote + 1);
-    vsnprintf(emsg->string + emsg->length, rest, format, args);
+    vsnprintf(emsg->string + emsg->length, rest, msg, args);
     va_end(args);
   }
   return false;
