@@ -30,6 +30,7 @@ AC_FUNC_FORK
 AC_CHECK_FUNCS([memchr memset strtol])
 
 AC_CONFIG_FILES([Makefile
+                 src/Makefile
                  src/xrun/Makefile
                  tools/arm/Makefile
                  tools/x86/Makefile])
