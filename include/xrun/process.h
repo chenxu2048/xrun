@@ -1,5 +1,5 @@
-#ifndef xrun / "xrun/S_H
-#define _XR_PROCESS_H
+#ifndef XR_PROCESS_H
+#define XR_PROCESS_H
 
 #include "xrun/files.h"
 #include "xrun/utils/list.h"

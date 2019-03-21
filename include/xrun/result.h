@@ -1,5 +1,5 @@
-#ifndef _XR_RESULT_H
-#define _XR_RESULT_H
+#ifndef XR_RESULT_H
+#define XR_RESULT_H
 
 typedef struct xr_tracer_result_s xr_tracer_result_t;
 typedef enum xr_tracer_code_e xr_tracer_code_t;

@@ -1,4 +1,4 @@
-#ifndef xrun / "xrun/
+#ifndef XR_CALLS_H
 #define XR_CALLS_H
 
 #include "config.h"

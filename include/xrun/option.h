@@ -1,5 +1,5 @@
-#ifndef _XR_OPTION_H
-#define _XR_OPTION_H
+#ifndef XR_OPTION_H
+#define XR_OPTION_H
 #include "xrun/utils/time.h"
 
 typedef struct xr_option_s xr_option_t;
