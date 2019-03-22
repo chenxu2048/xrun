@@ -33,6 +33,7 @@ typedef bool xr_tracer_op_strcpy_f(xr_tracer_t *tracer, int pid, void *address,
 
 typedef void xr_tracer_op_kill_f(xr_tracer_t *tracer, int pid);
 
+typedef struct xr_trace_trap_syscall_s xr_trace_trap_syscall_t;
 struct xr_trace_trap_syscall_s {
   long syscall;
 
@@ -51,7 +52,7 @@ struct xr_trace_trap_s {
   union {
     int exit_code;
     int stop_signal;
-    struct xr_trace_trap_syscall_s syscall_info;
+    xr_trace_trap_syscall_t syscall_info;
   };
 
   xr_process_t *process;

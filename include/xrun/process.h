@@ -42,6 +42,8 @@ struct xr_thread_s {
   xr_fs_t fs;
   xr_file_set_t fset;
 
+  int compat;
+
   xr_process_t *process;
   xr_list_t threads;
 };

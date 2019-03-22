@@ -185,6 +185,27 @@ bool xr_ptrace_tracer_step(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     (thread)->syscall_status ^= 1;           \
   } while (0)
 
+/*
+ * the implementation is in arch/ptrace_*.c depending on XR_ARCH_* marco.
+ */
+extern bool xr_ptrace_tracer_peek_syscall(int pid,
+                                          xr_trace_trap_syscall_t *syscall_info,
+                                          int compat);
+extern int xr_ptrace_tracer_syscall_compat(int pid);
+
+// we expire execve and execveat
+// using stub marco to prevent populate
+#ifndef XR_SYSCALL_EXECVE
+#define XR_SYSCALL_EXECVE__STUB -1
+#else
+#define XR_SYSCALL_EXECVE__STUB XR_SYSCALL_EXECVE
+#endif
+#ifndef XR_SYSCALL_EXECVEAT
+#define XR_SYSCALL_EXECVEAT__STUB -1
+#else
+#define XR_SYSCALL_EXECVEAT__STUB XR_SYSCALL_EXECVEAT
+#endif
+
 bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   struct rusage ru;
   int status;
@@ -223,10 +244,18 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     trap->stop_signal = WSTOPSIG(status);
   } else {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
-    if (get_syscall_info(trap) == false) {
+    if (xr_ptrace_tracer_peek_syscall(pid, &trap->syscall_info,
+                                      thread->compat) == false) {
       return _XR_TRACER_ERROR(
         tracer, "getting system call infomation of process %d failed.",
         trap->process->pid);
+    }
+
+    if (trap->syscall_info.syscall == XR_SYSCALL_EXECVE__STUB ||
+        trap->syscall_info.syscall == XR_SYSCALL_EXECVEAT__STUB) {
+      if (xr_ptrace_tracer_syscall_compat(pid) == -1) {
+        return _XR_TRACER_ERROR(tracer, "getting system compat mode failed");
+      }
     }
     __flip_thread_syscall_status(trap->thread);
   }

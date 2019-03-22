@@ -18,4 +18,4 @@ grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
   done
   echo "};"
   echo "#endif"
-) >> "$SOURCE"
+) > "$SOURCE"

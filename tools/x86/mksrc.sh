@@ -37,7 +37,7 @@ grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
 if [ "$ABI" = "i386" ]; then
   grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
     echo
-    echo "#ifdef define(XR_ARCH_X86_64) && define(XR_ARCH_X86_IA32)"
+    echo "#if defined(XR_ARCH_X86_64) && defined(XR_ARCH_X86_IA32)"
     echo
     echo "const int xr_syscall_table_x86_to_x64[XR_IA32_SYSCALL_MAX] = {"
     while read nr abi name entry compat; do
