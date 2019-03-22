@@ -16,9 +16,8 @@ bool xr_syscall_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 
   if (XR_SYSCALL_MAX < trap->syscall_info.syscall) {
     return tracer->option->call_access[trap->syscall_info.syscall];
-  } else {
-    return false;
   }
+  return true;
 }
 
 void xr_syscall_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,

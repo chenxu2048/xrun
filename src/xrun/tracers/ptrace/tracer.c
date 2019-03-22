@@ -81,6 +81,7 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
   tracer->nprocess++;
   tracer->nthread++;
 
+  thread->compat = xr_ptrace_tracer_syscall_compat(child);
   thread->tid = child;
   thread->syscall_status = XR_THREAD_CALLOUT;
   // Current state should be XR_THREAD_CALLIN, Since child process will be
@@ -89,7 +90,6 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
   // the first execve syscall by a wait operation before.
 
   xr_process_add_thread(process, thread);
-
   return thread;
 }
 
@@ -167,11 +167,6 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
   }
 
   xr_thread_t *thread = create_spawned_process(tracer, fork_ret);
-#if (__X86_64__) || defined(__X86__) || defined(__X32__)
-  if (detect_arch(thread) == false) {
-    return false;
-  }
-#endif
   return true;
 }
 
