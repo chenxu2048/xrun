@@ -33,6 +33,11 @@ struct xr_fs_s {
   xr_path_t *pwd;
 };
 
+static inline void xr_file_init(xr_file_t *file) {
+  file->path = _XR_NEW(xr_path_t);
+  xr_string_init(file->path, 1);
+}
+
 static inline void xr_file_delete(xr_file_t *file) {
   if (file->path) {
     xr_path_delete(file->path);
@@ -55,6 +60,9 @@ static inline void xr_file_open(xr_file_t *file, int fd, long flags,
 }
 
 static inline void __xr_file_dup(xr_file_t *file, xr_file_t *dfile) {
+  if (dfile->path == NULL) {
+    xr_file_init(dfile);
+  }
   xr_string_copy(dfile->path, file->path);
   dfile->flags = file->flags;
   dfile->write_length = file->write_length;
@@ -178,16 +186,22 @@ static inline void xr_file_set_remove_file(xr_file_set_t *fset,
 
 #define xr_file_set_set_read(fset, read) \
   do {                                   \
-    (fset)->data->read_length = read;    \
+    (fset)->data->total_read = read;     \
   } while (0)
 
 #define xr_file_set_set_write(fset, write) \
   do {                                     \
-    (fset)->data->write_length = write;    \
+    (fset)->data->total_write = write;     \
   } while (0)
 
-#define xr_file_set_read(fset, read) ((fset)->data->read)
-#define xr_file_set_write(fset, write) ((fset)->data->write)
+#define xr_file_set_get_read(fset) ((fset)->data->total_read)
+#define xr_file_set_get_write(fset) ((fset)->data->total_write)
+
+#define xr_file_set_read(fset, read) \
+  xr_file_set_set_read(fset, xr_file_set_get_read(fset) + read)
+
+#define xr_file_set_write(fset, write) \
+  xr_file_set_set_write(fset, xr_file_set_get_write(fset) + write)
 
 static inline void xr_fs_share(xr_fs_t *fs, xr_fs_t *sfs) {
   sfs->own = false;

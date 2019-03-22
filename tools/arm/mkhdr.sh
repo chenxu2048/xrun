@@ -8,8 +8,8 @@ CALL_ENTRIES=$(expr $CALL_ENTRIES + 1)
 
 # marco define
 grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
-  echo "#ifndef XR_CALLS_ARM_H"
-  echo "#define XR_CALLS_ARM_H"
+  echo "#ifndef _XR_CALLS_ARM_H"
+  echo "#define _XR_CALLS_ARM_H"
   echo
   echo "#define xr_syscall_table xr_syscall_table_arm"
   echo "#define XR_SYSCALL_MAX ${CALL_ENTRIES}"

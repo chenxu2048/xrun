@@ -13,7 +13,7 @@ struct xr_limit_s {
   int memory;
   xr_time_t time;
   int nfile;
-  unsigned long long io;
+  unsigned long long nread, nwrite;
 };
 
 struct xr_file_limit_s;

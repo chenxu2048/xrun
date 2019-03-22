@@ -8,11 +8,15 @@ AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 
+AC_PROG_CC_STDC([C99])
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_RANLIB
 
 # Checks for libraries.
+
+AC_CHECK_LIB(yajl, [yajl_complete_parse, yajl_parse])
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h limits.h stddef.h stdlib.h string.h sys/time.h unistd.h])

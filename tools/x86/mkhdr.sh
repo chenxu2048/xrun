@@ -11,11 +11,11 @@ ABI=$(grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | tail -1 | cut -f2)
 # marco define
 grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
   if [ "$ABI" = "i386" ]; then
-    echo "#ifndef XR_CALLS_IA32"
-    echo "#define XR_CALLS_IA32"
+    echo "#ifndef _XR_CALLS_IA32_H"
+    echo "#define _XR_CALLS_IA32_H"
   else
-    echo "#ifndef XR_CALLS_X64_H"
-    echo "#define XR_CALLS_X64_H"
+    echo "#ifndef _XR_CALLS_X64_H"
+    echo "#define _XR_CALLS_X64_H"
   fi
   echo "#ifndef XR_SYSCALL_MAX"
   echo "#define XR_SYSCALL_MAX ${CALL_ENTRIES}"
