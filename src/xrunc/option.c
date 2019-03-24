@@ -25,18 +25,24 @@ void xrn_print_options(struct xrn_option *opts) {
 
 void xrn_print_option(struct xrn_option *opt) {
   struct option *opt_ = &opt->opt;
+  int putlen = 0;
   if (opt_->flag != NULL) {
-    printf("  -%c ", *opt_->flag);
+    putlen += printf("  -%c, ", *opt_->flag);
   } else if (opt_->val != 0) {
-    printf("  -%c ", opt_->val);
+    putlen += printf("  -%c, ", opt_->val);
   } else {
-    printf("     ");
+    putlen += printf("      ");
   }
-  printf("--%s", opt_->name);
+  putlen += printf("--%s", opt_->name);
   if (opt_->has_arg == required_argument) {
-    printf(" %s", opt->format);
+    putlen += printf(" %s ", opt->format);
   } else if (opt_->has_arg == optional_argument) {
-    printf(" [%s]", opt->format);
+    putlen += printf(" [%s] ", opt->format);
+  }
+  if (putlen > 28) {
+    printf("\n%*c", 30, ' ');
+  } else {
+    printf("%*c", 30 - putlen, ' ');
   }
   puts(opt->descption);
 }
