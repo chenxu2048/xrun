@@ -24,7 +24,8 @@ typedef bool xr_checker_check_f(xr_checker_t *checker, xr_tracer_t *tracer,
                                 xr_trace_trap_t *trap);
 
 typedef void xr_checker_result_f(xr_checker_t *checker, xr_tracer_t *tracer,
-                                 xr_tracer_result_t *result);
+                                 xr_tracer_result_t *result,
+                                 xr_trace_trap_t *trap);
 
 typedef bool xr_checker_setup_f(xr_checker_t *checker, xr_tracer_t *tracer);
 

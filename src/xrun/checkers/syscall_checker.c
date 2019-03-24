@@ -17,11 +17,24 @@ bool xr_syscall_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   if (XR_SYSCALL_MAX < trap->syscall_info.syscall) {
     return tracer->option->call_access[trap->syscall_info.syscall];
   }
-  return true;
+  return false;
 }
 
 void xr_syscall_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                               xr_tracer_result_t *result) {}
+                               xr_tracer_result_t *result, xr_trace_trap_t *trap) {
+  result->status = XR_RESULT_CALLDENY;
+  result->ecall = trap->syscall_info.syscall;
+  if (result->ecall > XR_SYSCALL_MAX) {
+    xr_string_format(
+      &result->msg,
+      "Invalid system call %d is greater than XR_SYSCALL_MAX(%d).",
+      result->ecall, XR_SYSCALL_MAX);
+  } else {
+    xr_string_format(&result->msg, "System call %s(%d) is denied.",
+                     XR_CALLS_NAME(result->ecall, trap->thread->compat),
+                     result->ecall);
+  }
+}
 
 void xr_syscall_checker_delete(xr_checker_t *checker) {
   return;

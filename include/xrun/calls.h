@@ -4,8 +4,10 @@
 #include "config.h"
 #define XR_ARCH_X86_64
 
-#define XR_CALLS_CONVERT(str, compat) xr_calls_convert_impl(str, compat)
-static int xr_calls_convert_impl(const char *name, int compat);
+#define XR_CALLS_CONVERT(name, compat) xr_calls_convert_impl(name, compat)
+#define XR_CALLS_NAME(scno, compat) xr_calls_name_impl(scno, compat)
+static int xr_calls_convert_impl(const char* name, int compat);
+static const char* const xr_calls_name_impl(long scno, int compat);
 
 #if defined(XR_ARCH_X86_IA32) || defined(XR_ARCH_X86_64)
 /* call table for x64_86 and i386 compat */

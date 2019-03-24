@@ -22,8 +22,7 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
       return false;
     }
 
-    if (trap.trap == XR_TRACE_TRAP_EXIT ||
-        xr_tracer_check(tracer, result, &trap) == false) {
+    if (xr_tracer_check(tracer, result, &trap) == false) {
       break;
     }
 

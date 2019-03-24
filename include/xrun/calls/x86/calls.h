@@ -56,9 +56,22 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
   return -1;
 }
 
+static const char *const xr_calls_name_impl(long scno, int compat) {
+  if (compat == XR_SYSCALL_X86_COMPAT_IA32) {
+    return XR_IA32_SYSCALL_MAX > scno ? xr_syscall_table_ia32[scno] : "invalid";
+  } else {
+    return XR_X64_SYSCALL_MAX > scno ? xr_syscall_table_x64[scno] : "invalid";
+  }
+}
+
 #if !defined(XR_ARCH_X86_64)
 #undef XR_CALLS_CONVERT
 #define XR_CALLS_CONVERT(name, compat) xr_calls_convert_ia32_impl(name)
+
+#undef XR_CALLS_NAME
+#define XR_CALLS_NAME(scno, compat) \
+  xr_calls_name_impl(scno, XR_SYSCALL_X86_COMPAT_IA32)
+
 #endif
 
 #endif

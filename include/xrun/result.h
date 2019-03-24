@@ -25,8 +25,34 @@ enum xr_tracer_code_e {
   XR_RESULT_OK,
 };
 
+typedef struct xr_tracer_process_result_s xr_tracer_process_result_t;
+struct xr_tracer_process_result_s {
+  long memory;
+  long time;
+  int nthread;
+  int nfiles;
+};
+
 struct xr_tracer_result_s {
   xr_tracer_code_t status;
+  xr_string_t msg;
+  int nprocess;
+  xr_tracer_process_result_t *processes;
+  xr_tracer_process_result_t *eprocess;
+  union {
+    int ecall;
+    xr_path_t epath;
+  };
+  int epid, etid;
 };
+
+static inline void xr_tracer_result_delete(xr_tracer_result_t *result) {
+  if (result->nprocess != 0) {
+    free(result->processes);
+  }
+  if (result->status == XR_RESULT_PATHDENY) {
+    xr_path_delete(&result->epath);
+  }
+}
 
 #endif

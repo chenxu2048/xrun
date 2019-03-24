@@ -9,7 +9,8 @@ bool xr_syscall_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
                               xr_trace_trap_t *trap);
 
 void xr_syscall_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                               xr_tracer_result_t *result);
+                               xr_tracer_result_t *result,
+                               xr_trace_trap_t *trap);
 
 void xr_syscall_checker_delete(xr_checker_t *checker);
 
