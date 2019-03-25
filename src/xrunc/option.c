@@ -55,7 +55,7 @@ char *xrn_make_short_option(xrn_option_t *opt) {
   while (opt[opt_idx].opt.name != NULL) {
     if (opt[opt_idx].opt.val != 0) {
       *sopts++ = opt[opt_idx].opt.val;
-      if (opt[opt_idx].opt.has_arg == required_argument) {
+      if (opt[opt_idx].opt.has_arg != no_argument) {
         *sopts++ = ':';
       }
     }

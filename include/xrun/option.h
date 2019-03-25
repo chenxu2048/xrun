@@ -45,9 +45,9 @@ struct xr_option_s {
   int nprocess;
 
   xr_file_limit_t *file_access;
-  int n_file_access;
+  size_t n_file_access;
   xr_file_limit_t *dir_access;
-  int n_dir_access;
+  size_t n_dir_access;
   bool call_access[XR_SYSCALL_MAX];
 
   xr_limit_t limit, limit_per_process;

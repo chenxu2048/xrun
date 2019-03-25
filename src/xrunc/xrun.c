@@ -56,10 +56,7 @@ void xrn_global_option_set_init(xrn_global_config_set_t *cfg) {
   xrn_global_option_access_init(&cfg->daccess);
 
   xr_option_t *xropt = &cfg->option;
-  xropt->n_file_access = 0;
-  xropt->n_dir_access = 0;
-  xropt->file_access = NULL;
-  xropt->dir_access = NULL;
+  memset(xropt, 0, sizeof(xr_option_t));
 
   xr_entry_t *entry = &cfg->entry;
   xr_string_zero(&entry->path);
@@ -197,7 +194,7 @@ bool xrn_set_nfile(char *arg, void *ctx) {
   return true;
 }
 
-bool xrn_set_fork(char *arg, void *ctx) {
+bool xrn_set_process(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
   if (arg == NULL) {
     cfg->option.nprocess = 1;
@@ -264,13 +261,6 @@ xrn_option_t options[] = {
     xrn_set_file_entry,
   },
   {
-    {"fork", optional_argument, NULL, 'F'},
-    "Enable fork and set process number limitation.",
-    "1",
-    "N",
-    xrn_set_fork,
-  },
-  {
     {"help", no_argument, NULL, 'h'},
     "Help information",
     NULL,
@@ -290,6 +280,13 @@ xrn_option_t options[] = {
     NULL,
     "N",
     xrn_set_nfile,
+  },
+  {
+    {"process", required_argument, NULL, 'p'},
+    "Enable fork and set process number limitation.",
+    "1",
+    "N",
+    xrn_set_process,
   },
   {
     {"time", required_argument, NULL, 't'},
@@ -327,7 +324,7 @@ int main(int argc, char *argv[]) {
   bool parse = xrn_parse_options(argc, argv, options, &cfg.error, &cfg);
   if (cfg.help || parse == false) {
     if (parse == false) {
-      puts(cfg.error.string);
+      fputs(cfg.error.string, stderr);
       retval = 1;
     }
     xrn_print_options(options);
@@ -335,6 +332,12 @@ int main(int argc, char *argv[]) {
   }
   if (cfg.version) {
     // xrn_print_version();
+    goto xrn_parse_option_error;
+  }
+
+  if (xrn_config_parse(cfg.config_path, &cfg.option, &cfg.error) == false) {
+    fputs(cfg.error.string, stderr);
+    retval = 1;
     goto xrn_parse_option_error;
   }
 

@@ -4,201 +4,232 @@
 #include "xrunc/config.h"
 #include "xrunc/file_limit.h"
 
-#define XRN_CONFIG_ERROR(error, msg, ...)                                 \
-  do {                                                                    \
-    char errbuf[512];                                                     \
-    errbuf[0] = 0;                                                        \
-    size_t n = snprintf(errbuf, 512, "%s:" msg, __func__, ##__VA_ARGS__); \
-    xr_string_concat_raw(error, errbuf, n);                               \
+#define XRN_CONFIG_PARSE_ERROR_BUFFER 64
+
+#define XRN_CONFIG_SIGN_IF_NOT_ZERO(name, val) \
+  do {                                         \
+    if ((name) != 0) {                         \
+      name = val;                              \
+    }                                          \
   } while (0)
 
-static inline bool xrn_config_parse_access_entry(xr_json_t *entry,
-                                                 const char *name, size_t index,
-                                                 xr_file_limit_t *limit,
-                                                 xr_string_t *error) {
-  if (entry == NULL || !XR_JSON_IS_OBJECT(entry)) {
-    XRN_CONFIG_ERROR(error, "%s entry %ld type error", name, index);
+bool xrn_config_parse_limit(xr_json_t *entry, size_t index, const char *name,
+                            xr_file_limit_t *limit, xr_string_t *error) {
+  if (XR_JSON_IS_OBJECT(entry) == false) {
+    xr_string_format(error, "config.%s[%d] is not a object.", name, index);
     return false;
   }
-
-  // get path name
-  xr_json_t *path = xr_json_get(entry, "s", "path");
-  if (path == NULL) {
-    XRN_CONFIG_ERROR(error, "%s entry %ld key \"path\" not found", name, index);
-    return false;
-  } else if (!XR_JSON_IS_STRING(path)) {
-    XRN_CONFIG_ERROR(error, "%s entry %ld key \"path\" is not a string", name,
-                     index);
-    return false;
-  } else {
-    size_t path_len = strlen(path->u.string);
-    xr_string_init(&(limit->path), path_len + 1);
-    xr_string_concat_raw(&(limit->path), XR_JSON_STRING(path), path_len);
+  if (_XR_JSON_OBJECT(entry)->len != 2 || _XR_JSON_OBJECT(entry)->len != 3) {
+    xr_string_format(error, "config.%s[%d] has invalid key.", name, index);
   }
-
-  // get flag option
-  xr_json_t *flags = xr_json_get(entry, "s", "flags");
-  if (flags == NULL) {
-    XRN_CONFIG_ERROR(error, "%s entry %ld key \"flags\" not found", name,
-                     index);
-    return false;
-  } else if (XR_JSON_IS_STRING(flags)) {
-    // parse string flags
-    if (xrn_parse_file_limit_flag(XR_JSON_STRING(flags), limit) == false) {
-      XRN_CONFIG_ERROR(error, "%s entry %ld unrecognized flags %s", name, index,
-                       XR_JSON_STRING(flags));
+  for (int i = 0; i < _XR_JSON_OBJECT(entry)->len; ++i) {
+    const char *key = entry->u.object.keys[i];
+    xr_json_t *value = entry->u.object.values[i];
+    if (strcmp("path", key) == 0) {
+      if (!XR_JSON_IS_STRING(value)) {
+        xr_string_format(error, "config.%s[%d].path is not a string.", name,
+                         index);
+        return false;
+      }
+      xr_string_concat_raw(&limit->path, _XR_JSON_STRING(value),
+                           strlen(_XR_JSON_STRING(value)));
+    } else if (strcmp("flags", key) == 0) {
+      if (XR_JSON_IS_STRING(value)) {
+        limit->flags =
+          xrn_find_flag(_XR_JSON_STRING(value), strlen(_XR_JSON_STRING(value)));
+        if (limit->flags == -1) {
+          xr_string_format(error, "config.%s[%d].flags(%s) is invalid.",
+                           _XR_JSON_STRING(value));
+          return false;
+        }
+      } else if (XR_JSON_IS_INTEGER(value)) {
+        limit->flags = XR_JSON_INTEGER(value);
+      } else {
+        xr_string_format(error,
+                         "config.%s[%d].flags is not a string or integer.",
+                         name, index);
+        return false;
+      }
+    } else if (strcmp("contains", key) == 0) {
+      if (!XR_JSON_IS_TRUE(value) && !XR_JSON_IS_FALSE(value)) {
+        xr_string_format(error, "config.%s[%d].contains is not a boolean.",
+                         name, index);
+        return false;
+      }
+      limit->mode =
+        XR_JSON_IS_TRUE(value) ? XR_FILE_ACCESS_CONTAIN : XR_FILE_ACCESS_MATCH;
+    } else {
+      xr_string_format(error, "config.%s[%d].%s is not a valid field.", name,
+                       index, key);
       return false;
     }
-  } else if (XR_JSON_IS_INTEGER(flags)) {
-    // read integer flags
-    limit->flags = XR_JSON_INTEGER(flags);
-  } else {
-    // error type
-    XRN_CONFIG_ERROR(error,
-                     "%s entry %ld key \"flags\" is not a string or integer",
-                     name, index);
-    return false;
-  }
-
-  xr_json_t *match = xr_json_get(entry, "s", "match");
-  if (match == NULL || XR_JSON_IS_FALSE(match)) {
-    limit->mode = XR_FILE_ACCESS_CONTAIN;
-  } else if (XR_JSON_IS_TRUE(match)) {
-    limit->mode = XR_FILE_ACCESS_MATCH;
-  } else {
-    XRN_CONFIG_ERROR(error, "%s entry %ld key \"match\" is not a boolean", name,
-                     index);
-    return false;
   }
   return true;
 }
 
-static inline bool xrn_config_parse_access_list(xr_json_t *config,
-                                                const char *name,
-                                                xr_file_limit_t **limits,
-                                                int *nentries,
-                                                xr_string_t *error) {
-  if (config == NULL) {
-    return true;
-  } else if (!XR_JSON_IS_ARRAY(config)) {
-    XRN_CONFIG_ERROR(error, "%s must be list", name);
-  }
-  const size_t list_size = XR_JSON_ARRAY(config)->len;
-  if (list_size == 0) {
-    return true;
-  }
-  size_t resize = *nentries + list_size;
-  xr_file_limit_t *limit_new =
-    realloc(*limits, resize * sizeof(xr_file_limit_t));
-  if (limit_new == NULL) {
-    XRN_CONFIG_ERROR(error, "out of memory");
+bool xrn_config_parse_limits(xr_json_t *entries, const char *name,
+                             xr_file_limit_t **limit, size_t *n,
+                             xr_string_t *error) {
+  if (!XR_JSON_IS_ARRAY(entries)) {
+    xr_string_format(error, "config.%s is not an array.", name);
     return false;
   }
-  for (size_t i = 0; i < list_size; ++i) {
-    if (xrn_config_parse_access_entry(XR_JSON_ARRAY(config)->values[i], name, i,
-                                      limit_new + i + *nentries,
-                                      error) == false) {
-      XRN_CONFIG_ERROR(error, "parse %s entry error", name);
+  size_t len = entries->u.array.len;
+  xr_file_limit_t *limits = malloc(sizeof(xr_file_limit_t) * len);
+  *n = len;
+  *limit = limits;
+  memset(limit, 0, sizeof(xr_file_limit_t) * len);
+  for (int i = 0; i < len; ++i) {
+    xr_json_t *entry = XR_JSON_ARRAY(entries)->values[i];
+    if (xrn_config_parse_limit(entry, i, name, limits + i, error) == false) {
       return false;
     }
   }
-  *limits = limit_new;
-  *nentries = resize;
   return true;
 }
+
+bool xrn_config_parse_calls(xr_json_t *entries, bool *calls,
+                            xr_string_t *error) {
+  if (!XR_JSON_IS_ARRAY(entries)) {
+    xr_string_format(error, "config.calls is not an array.");
+    return false;
+  }
+  size_t len = _XR_JSON_ARRAY(entries)->len;
+  for (int i = 0; i < len; ++i) {
+    xr_json_t *call = _XR_JSON_ARRAY(entries)->values[i];
+    long v = 0;
+    if (XR_JSON_IS_INTEGER(call)) {
+      v = XR_JSON_INTEGER(call);
+    } else if (XR_JSON_IS_STRING(call)) {
+      // TODO: compat dectect.
+      v = XR_CALLS_CONVERT(_XR_JSON_STRING(call), 0);
+    } else {
+      xr_string_format(error, "config.calls[%d] is not a string or number.", i);
+      return false;
+    }
+    if (v <= 0 || v >= XR_SYSCALL_MAX) {
+      xr_string_format(
+        error, "config.calls[%d] is not a valid system call number.", i);
+      return false;
+    }
+    calls[v] = true;
+  }
+  return true;
+}
+
+#define __xrn_parse_failed(cfg) (xr_json_free(cfg), false)
 
 bool xrn_config_parse(const char *config_path, xr_option_t *option,
                       xr_string_t *error) {
-  bool retval = false;
-  FILE *config_file = fopen(config_path, "r");
-  xr_json_t *config = xr_json_parse(config_file, error);
+  FILE *config = fopen(config_path, "r");
   if (config == NULL) {
+    xr_string_format(error, "config in %s does not exist.", config_path);
     return false;
   }
-  xr_json_t *access = xr_json_get(config, "s", "files");
-  if (xrn_config_parse_access_list(access, "files", &(option->file_access),
-                                   &(option->n_file_access), error) == false) {
-    goto config_error;
-  }
-  access = xr_json_get(config, "s", "directories");
-  if (xrn_config_parse_access_list(access, "directories", &(option->dir_access),
-                                   &(option->n_dir_access), error) == false) {
-    goto config_error;
+  xr_json_t *cfg_json = xr_json_parse(config, error);
+  if (cfg_json == NULL) {
+    return false;
   }
 
-  xr_json_t *calls = xr_json_get(config, "s", "calls");
-  if (calls != NULL) {
-    // parse calls
+  xr_json_t *files = xr_json_get(cfg_json, "s", "files");
+  if (files) {
+    if (xrn_config_parse_limits(files, "files", &option->file_access,
+                                &option->n_file_access, error) == false) {
+      return __xrn_parse_failed(cfg_json);
+    }
   }
 
-  xr_json_t *fork = xr_json_get(config, "s", "limit", "fork");
-  if (fork == NULL) {
-    option->nprocess = 1;
-  } else if (XR_JSON_IS_INTEGER(fork)) {
-    option->nprocess = XR_JSON_INTEGER(fork);
-  } else {
-    XRN_CONFIG_ERROR(error, "limit.fork is not a integer");
-    goto config_error;
+  xr_json_t *directories = xr_json_get(cfg_json, "s", "directories");
+  if (directories) {
+    if (xrn_config_parse_limits(directories, "directories", &option->dir_access,
+                                &option->n_dir_access, error) == false) {
+      return __xrn_parse_failed(cfg_json);
+    }
   }
 
-  xr_json_t *memory = xr_json_get(config, "s", "limit", "memory");
-  if (memory == NULL) {
-    XRN_CONFIG_ERROR(error, "limit.memory is required.");
-    goto config_error;
-  } else if (XR_JSON_IS_INTEGER(memory)) {
-    option->limit.memory = option->limit_per_process.memory =
-      XR_JSON_INTEGER(memory);
-  } else {
-    XRN_CONFIG_ERROR(error, "limit.memory is not a integer");
-    goto config_error;
+  xr_json_t *calls = xr_json_get(cfg_json, "s", "calls");
+  if (calls) {
+    if (xrn_config_parse_calls(calls, option->call_access, error) == false) {
+      return __xrn_parse_failed(cfg_json);
+    }
   }
 
-  xr_json_t *nfile = xr_json_get(config, "s", "limit", "nfile");
-  if (nfile == NULL) {
-    XRN_CONFIG_ERROR(error, "limit.nfile is required.");
-    goto config_error;
-  } else if (XR_JSON_IS_INTEGER(nfile)) {
-    option->limit.nfile = option->limit_per_process.nfile =
-      XR_JSON_INTEGER(nfile);
-  } else {
-    XRN_CONFIG_ERROR(error, "limit.nfile is not a integer");
-    goto config_error;
+  xr_json_t *memory = xr_json_get(cfg_json, "s", "memory");
+  if (memory) {
+    if (!XR_JSON_IS_INTEGER(memory)) {
+      xr_string_format(error, "config.memory is not a number.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    long v = XR_JSON_INTEGER(memory);
+    if (v <= 0) {
+      xr_string_format(error, "config.memory must be greater than 0.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.memory, v);
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.memory, v);
   }
 
-  xr_json_t *time = xr_json_get(config, "s", "limit", "time");
-  if (time == NULL) {
-    XRN_CONFIG_ERROR(error, "limit.time is required.");
-    goto config_error;
-  } else if (XR_JSON_IS_INTEGER(time)) {
-    xr_time_t config_time = {
-      XR_JSON_INTEGER(time),
-      XR_JSON_INTEGER(time),
-    };
-    option->limit.time = option->limit_per_process.time = config_time;
-  } else {
-    XRN_CONFIG_ERROR(error, "limit.time is not a integer");
-    goto config_error;
+  xr_json_t *process = xr_json_get(cfg_json, "s", "process");
+  if (process) {
+    if (!XR_JSON_IS_INTEGER(process)) {
+      xr_string_format(error, "config.process is not a number.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    long v = XR_JSON_INTEGER(process);
+    if (v <= 0) {
+      xr_string_format(error, "config.process must be greater than 0.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->nprocess, v);
   }
 
-  xr_json_t *thread = xr_json_get(config, "s", "limit", "thread");
-  if (thread == NULL) {
-    XRN_CONFIG_ERROR(error, "limit.thread is required.");
-    goto config_error;
-  } else if (XR_JSON_IS_INTEGER(thread)) {
-    option->limit.nthread = option->limit_per_process.nthread =
-      XR_JSON_INTEGER(thread);
-  } else {
-    XRN_CONFIG_ERROR(error, "limit.thread is not a integer");
-    goto config_error;
+  xr_json_t *nfile = xr_json_get(cfg_json, "s", "nfile");
+  if (nfile) {
+    if (!XR_JSON_IS_INTEGER(nfile)) {
+      xr_string_format(error, "config.nfile is not a number.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    long v = XR_JSON_INTEGER(nfile);
+    if (v <= 0) {
+      xr_string_format(error, "config.nfile must be greater than 0.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.nfile, v);
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.nfile, v);
   }
 
-  retval = true;
-
-config_error:
-  xr_json_free(config);
-config_parse_error:
-  if (config_file != NULL) {
-    fclose(config_file);
+  xr_json_t *time_limit = xr_json_get(cfg_json, "s", "time");
+  if (time_limit) {
+    if (!XR_JSON_IS_INTEGER(time_limit)) {
+      xr_string_format(error, "config.time is not a number.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    long v = XR_JSON_INTEGER(time_limit);
+    if (v <= 0) {
+      xr_string_format(error, "config.time must be greater than 0.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.time.sys_time, v);
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.time.sys_time, v);
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.time.user_time, v);
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.time.user_time, v);
   }
-  return retval;
+
+  xr_json_t *thread = xr_json_get(cfg_json, "s", "thread");
+  if (thread) {
+    if (!XR_JSON_IS_INTEGER(thread)) {
+      xr_string_format(error, "config.thread is not a number.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    long v = XR_JSON_INTEGER(thread);
+    if (v <= 0) {
+      xr_string_format(error, "config.thread must be greater than 0.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.nthread, v);
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.nthread, v);
+  }
+
+  xr_json_free(cfg_json);
+  return true;
 }

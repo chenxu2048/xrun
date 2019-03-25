@@ -2,13 +2,13 @@
   "files": [
     {
       "path": "/dev/urandom",
-      "mode": "O_RDONLY"
+      "flags": "O_RDONLY"
     }
   ],
   "directories": [
     {
       "path": "/usr/lib",
-      "mode": "O_RDONLY"
+      "flags": "O_RDONLY"
     }
   ],
   "calls": [
