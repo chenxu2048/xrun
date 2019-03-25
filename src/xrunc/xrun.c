@@ -124,7 +124,7 @@ bool xrn_set_call(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
   char *endptr = NULL;
   long call = strtol(arg, &endptr, 10);
-  if (*endptr == '\0' || call <= 0 || call >= XR_SYSCALL_MAX) {
+  if (*endptr != '\0' || call <= 0 || call >= XR_SYSCALL_MAX) {
     xr_string_format(
       &cfg->error,
       "--call must be a valid number between 0 to %d instead of \"%s\".\n",
@@ -151,11 +151,11 @@ bool xrn_set_memory(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
   char *endptr = NULL;
   long memory = strtol(arg, &endptr, 10);
-  if (*endptr == '\0' || memory <= 0) {
+  if (*endptr != '\0' || memory <= 0) {
     xr_string_format(&cfg->error,
                      "--memory must be a valid number which is greater than 0 "
                      "instead of \"%s\".\n",
-                     XR_SYSCALL_MAX, arg);
+                     arg);
     return false;
   }
   cfg->option.limit.memory = memory;
@@ -167,11 +167,11 @@ bool xrn_set_time(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
   char *endptr = NULL;
   long t = strtol(arg, &endptr, 10);
-  if (*endptr == '\0' || t <= 0) {
+  if (*endptr != '\0' || t <= 0) {
     xr_string_format(&cfg->error,
                      "--time must be a valid number which is greater than 0 "
                      "instead of \"%s\".\n",
-                     XR_SYSCALL_MAX, arg);
+                     arg);
     return false;
   }
   cfg->option.limit.time.sys_time = t;
@@ -185,11 +185,11 @@ bool xrn_set_nfile(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
   char *endptr = NULL;
   long nfile = strtol(arg, &endptr, 10);
-  if (*endptr == '\0' || nfile <= 3) {
+  if (*endptr != '\0' || nfile <= 3) {
     xr_string_format(&cfg->error,
                      "--nfile must be a valid number which is greater than 3 "
                      "instead of \"%s\".\n",
-                     XR_SYSCALL_MAX, arg);
+                     arg);
     return false;
   }
   cfg->option.limit.nfile = nfile;
@@ -205,11 +205,11 @@ bool xrn_set_fork(char *arg, void *ctx) {
   }
   char *endptr = NULL;
   long nprocess = strtol(arg, &endptr, 10);
-  if (*endptr == '\0' || nprocess <= 1) {
+  if (*endptr != '\0' || nprocess <= 1) {
     xr_string_format(&cfg->error,
                      "--fork must be a valid number which is greater than 1 "
                      "instead of \"%s\".\n",
-                     XR_SYSCALL_MAX, arg);
+                     arg);
     return false;
   }
   cfg->option.nprocess = nprocess;
@@ -220,11 +220,11 @@ bool xrn_set_thread(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
   char *endptr = NULL;
   long nthread = strtol(arg, &endptr, 10);
-  if (*endptr == '\0' || nthread <= 1) {
+  if (*endptr != '\0' || nthread <= 1) {
     xr_string_format(&cfg->error,
                      "--thread must be a valid number which is greater than 1 "
                      "instead of \"%s\".\n",
-                     XR_SYSCALL_MAX, arg);
+                     arg);
     return false;
   }
   cfg->option.limit.nthread = nthread;

@@ -78,6 +78,7 @@ bool xrn_parse_options(int argc, char *argv[], xrn_option_t *option,
     int opt = getopt_long(argc, argv, sopt, gopt, &option_index);
     switch (opt) {
       case -1:
+        return true;
       case '?':
         xr_string_format(error, "Invalid option.\n", opt);
         return false;
@@ -103,8 +104,6 @@ bool xrn_parse_options(int argc, char *argv[], xrn_option_t *option,
           return false;
         }
         if (set(optarg, ctx) == false) {
-          xr_string_format(error, "Invalid option -%s.\n",
-                           option[option_index].opt.name);
           return false;
         }
       }
