@@ -3,7 +3,7 @@
 
 #include "xrunc/option.h"
 
-struct option *xrn_make_option(struct xrn_option *opts) {
+struct option *xrn_make_option(xrn_option_t *opts) {
   static struct option opts_[256];
   size_t opts_len = 0;
   while (opts[opts_len].opt.name != NULL) {
@@ -15,7 +15,7 @@ struct option *xrn_make_option(struct xrn_option *opts) {
   return opts_;
 }
 
-void xrn_print_options(struct xrn_option *opts) {
+void xrn_print_options(xrn_option_t *opts) {
   int opt_idx = 0;
   while (opts[opt_idx].opt.name != NULL) {
     xrn_print_option(opts + opt_idx);
@@ -23,7 +23,7 @@ void xrn_print_options(struct xrn_option *opts) {
   }
 }
 
-void xrn_print_option(struct xrn_option *opt) {
+void xrn_print_option(xrn_option_t *opt) {
   struct option *opt_ = &opt->opt;
   int putlen = 0;
   if (opt_->flag != NULL) {
@@ -47,7 +47,7 @@ void xrn_print_option(struct xrn_option *opt) {
   puts(opt->descption);
 }
 
-char *xrn_make_short_option(struct xrn_option *opt) {
+char *xrn_make_short_option(xrn_option_t *opt) {
   static char short_options[256] = {};
   char *sopts = short_options;
   int opt_idx = 0;
@@ -64,4 +64,51 @@ char *xrn_make_short_option(struct xrn_option *opt) {
 
   *sopts++ = '\0';
   return short_options;
+}
+
+bool xrn_parse_options(int argc, char *argv[], xrn_option_t *option,
+                       xr_string_t *error, void *ctx) {
+  int option_index = -1;
+  opterr = 0;
+  char *sopt = xrn_make_short_option(option);
+  size_t sopt_len = strlen(sopt);
+  struct option *gopt = xrn_make_option(option);
+  while (true) {
+    option_index = -1;
+    int opt = getopt_long(argc, argv, sopt, gopt, &option_index);
+    switch (opt) {
+      case -1:
+      case '?':
+        xr_string_format(error, "Invalid option.\n", opt);
+        return false;
+      default: {
+        if (option_index == -1) {
+          int i = 0;
+          while (option[i].opt.name != NULL) {
+            if (option[i].opt.val == opt) {
+              option_index = i;
+              break;
+            }
+            i++;
+          }
+          if (option_index == -1) {
+            xr_string_format(error, "Option -%c is unrecongized.\n", opt);
+            return false;
+          }
+        }
+        xrn_option_f *set = option[option_index].set;
+        if (set == NULL) {
+          xr_string_format(error, "Option --%s with NULL handle function.\n",
+                           option[option_index].opt.name);
+          return false;
+        }
+        if (set(optarg, ctx) == false) {
+          xr_string_format(error, "Invalid option -%s.\n",
+                           option[option_index].opt.name);
+          return false;
+        }
+      }
+    }
+  }
+  return true;
 }

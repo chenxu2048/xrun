@@ -53,4 +53,8 @@ struct xr_option_s {
   xr_limit_t limit, limit_per_process;
 };
 
+static inline void xr_file_limit_delete(xr_file_limit_t *limit) {
+  xr_path_delete(&limit->path);
+}
+
 #endif

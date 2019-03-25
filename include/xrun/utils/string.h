@@ -14,6 +14,12 @@ struct xr_string_s {
   char *string;
 };
 
+static inline void xr_string_zero(xr_string_t *str) {
+  str->length = 0;
+  str->capacity = 0;
+  str->string = NULL;
+}
+
 /**
  * Init a string
  *
