@@ -3,7 +3,9 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include "xrun/result.h"
 #include "xrun/tracer.h"
+#include "xrun/tracers/ptrace/tracer.h"
 
 #include "xrunc/config.h"
 #include "xrunc/file_limit.h"
@@ -246,11 +248,11 @@ xrn_option_t options[] = {
   },
   {
     {"directory", required_argument, NULL, 'd'},
-    "Directory can be accessed. Note that colon(:) in path should be "
-    "escaped "
-    "as \\:",
+    "Directory can be accessed. Note that colon(:) in path should be escaped "
+    "as \\:. (-) at the begin of flags means a containing mode, and flags can "
+    "combine using (+)",
     NULL,
-    "path:[+]flags",
+    "path:[!]flags",
     xrn_set_dir_entry,
   },
   {
@@ -317,6 +319,26 @@ xrn_option_t options[] = {
   },
 };
 
+static inline void xrn_print_error(xr_string_t *error) {
+  if (error->string[error->length - 1] != '\n') {
+    xr_string_concat_raw(error, "\n", 2);
+  }
+  fputs(error->string, stderr);
+}
+
+static inline bool xrn_add_file_limit(char **pathes, xr_file_limit_t **limit,
+                                      size_t *nlimit, size_t length,
+                                      xr_string_t *error) {
+  size_t n = *nlimit;
+  *nlimit += length;
+  *limit = realloc(*limit, sizeof(xr_file_limit_t) * (*nlimit));
+  memset((*limit) + n, 0, sizeof(xr_file_limit_t) * length);
+  if (xrn_file_limit_read_all(pathes, length, (*limit) + n, error) == false) {
+    xrn_print_error(error);
+    return false;
+  }
+}
+
 int main(int argc, char *argv[]) {
   int retval = 0;
   xrn_global_config_set_t cfg;
@@ -324,7 +346,7 @@ int main(int argc, char *argv[]) {
   bool parse = xrn_parse_options(argc, argv, options, &cfg.error, &cfg);
   if (cfg.help || parse == false) {
     if (parse == false) {
-      fputs(cfg.error.string, stderr);
+      xrn_print_error(&cfg.error);
       retval = 1;
     }
     xrn_print_options(options);
@@ -335,12 +357,41 @@ int main(int argc, char *argv[]) {
     goto xrn_parse_option_error;
   }
 
-  if (xrn_config_parse(cfg.config_path, &cfg.option, &cfg.error) == false) {
-    fputs(cfg.error.string, stderr);
+  if (cfg.config_path != NULL &&
+      xrn_config_parse(cfg.config_path, &cfg.option, &cfg.error) == false) {
+    xrn_print_error(&cfg.error);
     retval = 1;
     goto xrn_parse_option_error;
   }
 
+  if (cfg.faccess.length != 0) {
+    if (xrn_add_file_limit(cfg.faccess.access, &cfg.option.file_access,
+                           &cfg.option.n_file_access, cfg.faccess.length,
+                           &cfg.error) == false) {
+      goto xrn_parse_option_error;
+    }
+  }
+
+  if (cfg.daccess.length != 0) {
+    if (xrn_add_file_limit(cfg.daccess.access, &cfg.option.dir_access,
+                           &cfg.option.n_dir_access, cfg.daccess.length,
+                           &cfg.error) == false) {
+      goto xrn_parse_option_error;
+    }
+  }
+
+  xr_tracer_t tracer;
+  xr_tracer_result_t result;
+  xr_tracer_ptrace_init(&tracer, "xrunc_tracer");
+  if (xr_tracer_setup(&tracer, &cfg.option) == false) {
+    xrn_print_error(&tracer.error.msg);
+    retval = 1;
+    goto xrn_tracer_failed;
+  }
+  bool res = xr_tracer_trace(&tracer, &cfg.entry, &result);
+  xrn_print_error(&tracer.error.msg);
+xrn_tracer_failed:
+  xr_tracer_delete(&tracer);
 xrn_parse_option_error:
   xrn_global_option_set_delete(&cfg);
   return retval;

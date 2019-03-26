@@ -22,7 +22,18 @@ bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
 bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
                           const void *buffer, size_t size);
 
-bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
-                      xr_string_t *str);
+bool xr_ptrace_tracer_strcpy(xr_tracer_t *tracer, int pid, void *address,
+                             xr_string_t *str);
+
+static inline void xr_tracer_ptrace_init(xr_tracer_t *tracer,
+                                         const char *name) {
+  xr_tracer_init(tracer, name);
+  tracer->spwan = xr_ptrace_tracer_spawn;
+  tracer->step = xr_ptrace_tracer_step;
+  tracer->trap = xr_ptrace_tracer_trap;
+  tracer->get = xr_ptrace_tracer_get;
+  tracer->set = xr_ptrace_tracer_set;
+  tracer->strcpy = xr_ptrace_tracer_strcpy;
+}
 
 #endif

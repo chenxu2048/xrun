@@ -318,8 +318,8 @@ bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
   return true;
 }
 
-bool xr_ptrace_strcpy(xr_tracer_t *tracer, int pid, void *address,
-                      xr_string_t *str) {
+bool xr_ptrace_tracer_strcpy(xr_tracer_t *tracer, int pid, void *address,
+                             xr_string_t *str) {
   str->length = 0;
   // aligned address in kernel
   long addr = (long)address & __xr_address_align;

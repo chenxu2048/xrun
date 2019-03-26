@@ -15,6 +15,7 @@ typedef struct xr_tracer_result_s xr_tracer_result_t;
 typedef struct xr_option_s xr_option_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
 typedef struct xr_error_s xr_error_t;
+typedef struct xr_entry_s xr_entry_t;
 
 typedef bool xr_tracer_op_spawn_f(xr_tracer_t *tracer);
 
@@ -39,6 +40,11 @@ struct xr_trace_trap_syscall_s {
 
   long args[7];
   long retval;
+};
+
+struct xr_error_s {
+  int eno;
+  xr_string_t msg;
 };
 
 struct xr_trace_trap_s {
@@ -70,7 +76,6 @@ struct xr_tracer_s {
     xr_tracer_op_set_f *set;
     xr_tracer_op_strcpy_f *strcpy;
   };
-  void *tracer_private;
 
   xr_option_t *option;
 
@@ -82,10 +87,18 @@ struct xr_tracer_s {
 
   xr_checker_t *failed_checker;
 
-  xr_error_t *error;
+  xr_error_t error;
 };
 
-bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
+static inline void xr_tracer_init(xr_tracer_t *tracer, const char *name) {
+  memset(tracer, 0, sizeof(xr_tracer_t));
+  tracer->name = name;
+  xr_list_init(&tracer->checkers);
+  xr_list_init(&tracer->processes);
+  xr_string_zero(&tracer->error.msg);
+}
+
+bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
                      xr_tracer_result_t *result);
 
 bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option);
@@ -96,11 +109,6 @@ void xr_tracer_clean(xr_tracer_t *tracer);
 bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...);
 
 void xr_tracer_delete(xr_tracer_t *tracer);
-
-struct xr_error_s {
-  int eno;
-  xr_string_t msg;
-};
 
 #define _XR_TRACER_ERROR(tracer, msg, ...) \
   (xr_tracer_error(tracer, "%s: " msg "\n", __func__, ##__VA_ARGS__))

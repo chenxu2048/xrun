@@ -37,8 +37,6 @@ AC_CHECK_FUNCS([memchr memset strtol])
 AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/xrun/Makefile
-                 src/xrun/checkers/Makefile
-                 src/xrun/tracers/Makefile
                  src/xrunc/Makefile
                  tools/arm/Makefile
                  tools/x86/Makefile])

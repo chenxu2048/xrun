@@ -2,6 +2,7 @@
 #define XR_STRING_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -112,19 +113,30 @@ static inline bool xr_string_equal(xr_string_t *lhs, xr_string_t *rhs) {
          strncmp(lhs->string, rhs->string, lhs->length);
 }
 
-static inline void xr_string_format(xr_string_t *str, const char *format, ...) {
-  va_list args;
-  va_start(args, format);
+static inline bool xr_string_vformat(xr_string_t *str, const char *format,
+                                     va_list args) {
+  if (str->string == NULL) {
+    xr_string_init(str, 64);
+  }
   int wrote = vsnprintf(str->string, str->capacity - 1, format, args);
-  va_end(args);
   if (wrote >= str->capacity) {
-    va_start(args, format);
     xr_string_grow(str, wrote + 1);
-    vsnprintf(str->string, str->capacity - 1, format, args);
-    va_end(args);
+    return false;
   }
   str->length = wrote;
   str->string[str->length] = 0;
+}
+
+static inline void xr_string_format(xr_string_t *str, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  bool formatted = xr_string_vformat(str, format, args);
+  va_end(args);
+  if (formatted == false) {
+    va_start(args, format);
+    formatted = xr_string_vformat(str, format, args);
+    va_end(args);
+  }
 }
 
 static inline void xr_string_swap(xr_string_t *lhs, xr_string_t *rhs) {

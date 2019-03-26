@@ -2,17 +2,14 @@
 #include <stdlib.h>
 
 #include "xrun/checker.h"
+#include "xrun/option.h"
 #include "xrun/process.h"
 #include "xrun/result.h"
 #include "xrun/tracer.h"
 #include "xrun/utils/utils.h"
 
-bool xr_tracer_trace(xr_tracer_t *tracer, xr_option_t *option,
+bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
                      xr_tracer_result_t *result) {
-  if (xr_tracer_setup(tracer, option) == false) {
-    result->status = XR_RESULT_UNKNOWN;
-    return _XR_TRACER_ERROR(tracer, "tracer setup failed.");
-  }
   if (tracer->spwan(tracer) == false) {
     return _XR_TRACER_ERROR(tracer, "tracer spwan error.");
   }
@@ -91,23 +88,24 @@ void xr_tracer_delete(xr_tracer_t *tracer) {
 }
 
 bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...) {
-  xr_error_t *error = tracer->error;
-  xr_string_t *emsg = &error->msg;
+  xr_error_t *error = &tracer->error;
   if (errno) {
     error->eno = errno;
   }
-  size_t rest = emsg->capacity - emsg->length - 1;
+  xr_string_t emsg;
   va_list args;
+  xr_string_init(&emsg, strlen(msg) * 2);
   va_start(args, msg);
-  int wrote = vsnprintf(emsg->string + emsg->length, rest, msg, args);
+  bool formatted = xr_string_vformat(&emsg, msg, args);
   va_end(args);
 
-  if (wrote >= rest) {
+  if (formatted == false) {
     // retry
     va_start(args, msg);
-    xr_string_grow(emsg, emsg->length + wrote + 1);
-    vsnprintf(emsg->string + emsg->length, rest, msg, args);
+    formatted = xr_string_vformat(&emsg, msg, args);
     va_end(args);
   }
+  xr_string_concat(&error->msg, &emsg);
+  xr_string_delete(&emsg);
   return false;
 }

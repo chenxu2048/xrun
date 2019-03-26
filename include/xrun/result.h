@@ -1,6 +1,9 @@
 #ifndef XR_RESULT_H
 #define XR_RESULT_H
 
+#include "xrun/utils/path.h"
+#include "xrun/utils/string.h"
+
 typedef struct xr_tracer_result_s xr_tracer_result_t;
 typedef enum xr_tracer_code_e xr_tracer_code_t;
 

@@ -35,9 +35,7 @@ bool xrn_config_parse_limit(xr_json_t *entry, size_t index, const char *name,
                            strlen(_XR_JSON_STRING(value)));
     } else if (strcmp("flags", key) == 0) {
       if (XR_JSON_IS_STRING(value)) {
-        limit->flags =
-          xrn_find_flag(_XR_JSON_STRING(value), strlen(_XR_JSON_STRING(value)));
-        if (limit->flags == -1) {
+        if (xrn_file_limit_read_flags(_XR_JSON_STRING(value), limit) == false) {
           xr_string_format(error, "config.%s[%d].flags(%s) is invalid.",
                            _XR_JSON_STRING(value));
           return false;
@@ -78,7 +76,7 @@ bool xrn_config_parse_limits(xr_json_t *entries, const char *name,
   xr_file_limit_t *limits = malloc(sizeof(xr_file_limit_t) * len);
   *n = len;
   *limit = limits;
-  memset(limit, 0, sizeof(xr_file_limit_t) * len);
+  memset(limits, 0, sizeof(xr_file_limit_t) * len);
   for (int i = 0; i < len; ++i) {
     xr_json_t *entry = XR_JSON_ARRAY(entries)->values[i];
     if (xrn_config_parse_limit(entry, i, name, limits + i, error) == false) {
@@ -107,7 +105,7 @@ bool xrn_config_parse_calls(xr_json_t *entries, bool *calls,
       xr_string_format(error, "config.calls[%d] is not a string or number.", i);
       return false;
     }
-    if (v <= 0 || v >= XR_SYSCALL_MAX) {
+    if (v < 0 || v >= XR_SYSCALL_MAX) {
       xr_string_format(
         error, "config.calls[%d] is not a valid system call number.", i);
       return false;
