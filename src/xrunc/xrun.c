@@ -93,7 +93,7 @@ void xrn_global_option_set_delete(xrn_global_config_set_t *cfg) {
   xr_path_delete(&xrentry->pwd);
   xr_path_delete(&xrentry->root);
   if (xrentry->argv != NULL) {
-    free((void *)xrentry->argv);
+    free(xrentry->argv);
   }
 }
 
@@ -356,6 +356,20 @@ int main(int argc, char *argv[]) {
     // xrn_print_version();
     goto xrn_parse_option_error;
   }
+
+  if (optind >= argc) {
+    retval = 1;
+    xrn_print_options(options);
+    goto xrn_parse_option_error;
+  }
+  char *prog = argv[optind];
+  xr_string_concat_raw(&cfg.entry.path, prog, strlen(prog));
+  int entry_argc = argc - optind;
+  cfg.entry.argv = malloc(sizeof(char *) * (entry_argc + 1));
+  for (int i = 0; i < entry_argc; ++i) {
+    cfg.entry.argv[i] = argv[optind + i];
+  }
+  cfg.entry.argv[entry_argc] = NULL;
 
   if (cfg.config_path != NULL &&
       xrn_config_parse(cfg.config_path, &cfg.option, &cfg.error) == false) {

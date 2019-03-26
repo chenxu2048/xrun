@@ -109,10 +109,15 @@ struct __xr_ptrace_tracer_pipe_info {
 bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
   // open pipe for delivering error
   int error_pipe[2] = {};
-  if (pipe(error_pipe) == -1 ||
-      fcntl(error_pipe[0], F_SETFD, O_CLOEXEC) == -1 ||
-      fcntl(error_pipe[1], F_SETFD, O_CLOEXEC) != -1) {
+  if (pipe(error_pipe) == -1) {
     return _XR_TRACER_ERROR(tracer, "ptrace_tracer popen error pipe failed.");
+  }
+  for (int i = 0; i < 2; ++i) {
+    int flag = fcntl(error_pipe[i], F_GETFD, 0);
+    if (fcntl(error_pipe[i], F_SETFD, flag | O_CLOEXEC) == -1) {
+      return _XR_TRACER_ERROR(tracer,
+                              "ptracer_tracer pipe close_on_exec failed.");
+    }
   }
 
   // do fork here
@@ -130,9 +135,9 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
     // exec failed. die here
     // send tracer->error into pipe
     struct __xr_ptrace_tracer_pipe_info error = {
-      .eno = tracer->error->eno,
+      .eno = tracer->error.eno,
     };
-    strncpy(error.msg, tracer->error->msg.string, __XR_PTRACE_TRACER_PIPE_ERR);
+    strncpy(error.msg, tracer->error.msg.string, __XR_PTRACE_TRACER_PIPE_ERR);
     write(error_pipe[1], &error, sizeof(error));
     _exit(1);
   }

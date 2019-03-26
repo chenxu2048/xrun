@@ -91,6 +91,9 @@ bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...) {
   xr_error_t *error = &tracer->error;
   if (errno) {
     error->eno = errno;
+    char *errstr = strerror(errno);
+    xr_string_concat_raw(&error->msg, errstr, strlen(errstr));
+    xr_string_concat_raw(&error->msg, " -- ", 4);
   }
   xr_string_t emsg;
   va_list args;

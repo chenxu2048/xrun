@@ -35,7 +35,7 @@ struct xr_entry_s {
   xr_path_t path, pwd, root;
   int user;
   int stdio[3];
-  char *const *argv;
+  char **argv;
 };
 
 struct xr_option_s;
