@@ -24,14 +24,14 @@ static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
   if (errno) {
     return -1;
   }
-  return inst & XR_ARM_OABI_MASK == 0 ? XR_SYSCALL_COMPAT_ARM_EABI
-                                      : XR_SYSCALL_COMPAT_ARM_OABI;
+  return inst & XR_ARM_OABI_MASK == 0 ? XR_COMPAT_SYSCALL_ARM_EABI
+                                      : XR_COMPAT_SYSCALL_ARM_OABI;
 }
 
 static inline bool xr_ptrace_tracer_peek_syscall_arm(
   int pid, xr_trace_trap_syscall_t *syscall_info, int compat) {
   struct user_regs regs;
-  if (ptrace(PTRACE_GETREGS, pid, NULL, regs) == -1) {
+  if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
     return false;
   }
   if (compat == XR_SYSCALL_COMPAT_ARM_EABI) {

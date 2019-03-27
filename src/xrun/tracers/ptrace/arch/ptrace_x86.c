@@ -1,9 +1,12 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/ptrace.h>
 #include <sys/user.h>
+#include <unistd.h>
 
 #include "xrun/calls.h"
 #include "xrun/tracer.h"
+#include "xrun/tracers/ptrace/elf.h"
 #include "xrun/tracers/ptrace/tracer.h"
 
 #ifdef XR_ARCH_X86_IA32
@@ -19,7 +22,7 @@
 static inline int xr_ptrace_tracer_syscall_compat_x86(int pid) {
   long rip = ptrace(PTRACE_PEEKUSER, pid, XR_X64_PC_OFFSET, NULL);
   if (errno) {
-    return -1;
+    return XR_COMPAT_SYSCALL_INVALID;
   }
   long sc_inst = rip - 2;
   long sc_inst_align = sc_inst & XR_X64_ALIGN_MASK;
@@ -28,30 +31,30 @@ static inline int xr_ptrace_tracer_syscall_compat_x86(int pid) {
   unsigned char *byte = (unsigned char *)inst;
   inst[0] = ptrace(PTRACE_PEEKTEXT, pid, sc_inst_align, NULL);
   if (errno) {
-    return -1;
+    return XR_COMPAT_SYSCALL_INVALID;
   }
   if (offset == 0x7) {
     // syscall instruction cross address align
     inst[1] = ptrace(PTRACE_PEEKTEXT, pid, sc_inst_align + 8, NULL);
     if (errno) {
-      return -1;
+      return XR_COMPAT_SYSCALL_INVALID;
     }
   }
   unsigned char low = byte[offset], high = byte[offset + 1];
   if (low == XR_X86_INT0X80_INST_LOW && high == XR_X86_INT0x80_INST_HIGH) {
-    return XR_SYSCALL_X86_COMPAT_IA32;
+    return XR_COMPAT_SYSCALL_X86_IA32;
   } else if (low == XR_X86_SYSCALL_INST_LOW &&
              high == XR_X86_SYSCALL_INST_HIGH) {
-    return XR_SYSCALL_X86_COMPAT_64;
+    return XR_COMPAT_SYSCALL_X86_64;
   } else {
-    return -1;
+    return XR_COMPAT_SYSCALL_INVALID;
   }
 }
 
 static inline bool xr_ptrace_tracer_peek_syscall_x86(
   int pid, xr_trace_trap_syscall_t *syscall_info, int compat) {
   struct user_regs_struct regs;
-  if (ptrace(PTRACE_GETREGS, pid, NULL, regs) == -1) {
+  if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
     return false;
   }
 #ifdef XR_ARCH_X86_64
@@ -59,8 +62,10 @@ static inline bool xr_ptrace_tracer_peek_syscall_x86(
   syscall_info->retval = regs.rax;
 
   switch (compat) {
-    case XR_SYSCALL_X86_COMPAT_64:
-    case XR_SYSCALL_X86_COMPAT_X32:
+    case XR_COMPAT_SYSCALL_INVALID:
+      // fallback to x64
+    case XR_COMPAT_SYSCALL_X86_64:
+    case XR_COMPAT_SYSCALL_X86_X32:
       // x32 is similar to x64, with some difference at call number.
       syscall_info->args[0] = regs.rdi;
       syscall_info->args[1] = regs.rsi;
@@ -69,7 +74,7 @@ static inline bool xr_ptrace_tracer_peek_syscall_x86(
       syscall_info->args[4] = regs.r8;
       syscall_info->args[5] = regs.r9;
       break;
-    case XR_SYSCALL_X86_COMPAT_IA32:
+    case XR_COMPAT_SYSCALL_X86_IA32:
       // if tracer is in 64bit and tracee is in ia32-compat-mode, the kernel
       // space of tracee is in 64 bits, but pass args via i386 syscall abi.
       syscall_info->args[0] = regs.rbx;
@@ -96,6 +101,25 @@ static inline bool xr_ptrace_tracer_peek_syscall_x86(
   return true;
 }
 
+int xr_ptrace_tracer_elf_compat_x86(xr_path_t *elf) {
+  e_ident_t eident;
+  int elffd = open(elf->string, O_RDONLY);
+  if (elffd == -1) {
+    // rollback
+    return XR_COMPAT_SYSCALL_INVALID;
+  }
+  int rd = read(elffd, &eident, sizeof(eident));
+  close(elffd);
+  if (rd != sizeof(eident)) {
+    return XR_COMPAT_SYSCALL_INVALID;
+  }
+  if (ELF_MAGIC_CHECK(eident)) {
+    return XR_COMPAT_SYSCALL_INVALID;
+  }
+  return ELF_CLASS(eident) == ELFCLASS64 ? XR_COMPAT_SYSCALL_X86_64
+                                         : XR_COMPAT_SYSCALL_X86_IA32;
+}
+
 bool xr_ptrace_tracer_peek_syscall(int pid,
                                    xr_trace_trap_syscall_t *syscall_info,
                                    int compat) {
@@ -107,7 +131,16 @@ int xr_ptrace_tracer_syscall_compat(int pid) {
   return xr_ptrace_tracer_syscall_compat_x86(pid);
 #else
   // compat mode is ignored.
-  return XR_SYSCALL_COMPAT_MODE_X86;
+  return XR_COMPAT_SYSCALL_X86_IA32;
 #endif
 }
+
+int xr_ptrace_tracer_elf_compat(xr_path_t *elf) {
+#ifdef XR_ARCH_X86_64
+  return xr_ptrace_tracer_elf_compat_x86(elf);
+#else
+  return XR_COMPAT_SYSCALL_X86_IA32;
+#endif
+}
+
 #endif

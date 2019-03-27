@@ -98,6 +98,8 @@ static inline void xr_tracer_init(xr_tracer_t *tracer, const char *name) {
   xr_string_zero(&tracer->error.msg);
 }
 
+bool xr_tracer_add_checker(xr_tracer_t *tracer, xr_checker_id_t cid);
+
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
                      xr_tracer_result_t *result);
 

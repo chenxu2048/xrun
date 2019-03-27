@@ -39,6 +39,7 @@ static inline bool __do_process_read_check(xr_checker_t *checker,
   if (xr_file_set_get_read(fset) > option->limit_per_process.nread) {
     return xr_io_checker_failed(checker, file, thread);
   }
+  return true;
 }
 static inline bool __do_process_write_check(xr_checker_t *checker,
                                             xr_option_t *option,
@@ -53,6 +54,7 @@ static inline bool __do_process_write_check(xr_checker_t *checker,
   if (xr_file_set_get_write(fset) > option->limit_per_process.nwrite) {
     return xr_io_checker_failed(checker, file, thread);
   }
+  return true;
 }
 
 bool xr_io_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,

@@ -3,6 +3,8 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include "xrun/checkers.h"
+
 #include "xrun/entry.h"
 #include "xrun/result.h"
 #include "xrun/tracer.h"
@@ -340,6 +342,7 @@ static inline bool xrn_add_file_limit(char **pathes, xr_file_limit_t **limit,
     xrn_print_error(error);
     return false;
   }
+  return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -407,6 +410,16 @@ int main(int argc, char *argv[]) {
   xr_tracer_t tracer;
   xr_tracer_result_t result;
   xr_tracer_ptrace_init(&tracer, "xrunc_tracer");
+
+  xr_checker_id_t checkers[5] = {XR_CHECKER_FILE, XR_CHECKER_RESOURCE,
+                                 XR_CHECKER_IO, XR_CHECKER_FORK,
+                                 XR_CHECKER_FILE};
+  for (int i = 0; i < 5; ++i) {
+    if (xr_tracer_add_checker(&tracer, checkers[i]) == false) {
+      goto xrn_tracer_failed;
+    }
+  }
+
   if (xr_tracer_setup(&tracer, &cfg.option) == false) {
     xrn_print_error(&tracer.error.msg);
     retval = 1;

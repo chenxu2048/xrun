@@ -100,7 +100,7 @@ bool xrn_config_parse_calls(xr_json_t *entries, bool *calls,
       v = XR_JSON_INTEGER(call);
     } else if (XR_JSON_IS_STRING(call)) {
       // TODO: compat dectect.
-      v = XR_CALLS_CONVERT(_XR_JSON_STRING(call), 0);
+      v = XR_CALLS_CONVERT(_XR_JSON_STRING(call), 1);
     } else {
       xr_string_format(error, "config.calls[%d] is not a string or number.", i);
       return false;

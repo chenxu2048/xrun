@@ -18,6 +18,16 @@
 #include "xrun/tracers/ptrace/tracer.h"
 #include "xrun/utils/utils.h"
 
+/*
+ * the implementation is in arch/ptrace_*.c depending on XR_ARCH_* marco.
+ */
+extern bool xr_ptrace_tracer_peek_syscall(int pid,
+                                          xr_trace_trap_syscall_t *syscall_info,
+                                          int compat);
+extern int xr_ptrace_tracer_syscall_compat(int pid);
+
+extern int xr_ptrace_tracer_elf_compat(xr_path_t *elf);
+
 // we try to set close on exec for any other file description
 static inline void xr_ptrace_try_cloexec() {
   struct rlimit limit;
@@ -47,14 +57,14 @@ static inline void do_exec(xr_tracer_t *tracer, xr_entry_t *entry) {
 static inline bool rlimit_cpu_time(xr_time_t time) {
   struct rlimit rlimit = {.rlim_cur = time.user_time / 1000,
                           .rlim_max = time.user_time / 1000 + 1};
-  return setrlimit(RLIMIT_CPU, &rlimit) != 0;
+  return setrlimit(RLIMIT_CPU, &rlimit) == 0;
 }
 
 static inline bool rlimit_memory(int memory) {
   struct rlimit address = {.rlim_cur = memory * 2, .rlim_max = memory * 2 + 1};
   struct rlimit data = {.rlim_cur = memory, .rlim_max = memory + 1};
-  return setrlimit(RLIMIT_AS, &address) != 0 &&
-         setrlimit(RLIMIT_DATA, &data) != 0;
+  return setrlimit(RLIMIT_AS, &address) == 0 &&
+         setrlimit(RLIMIT_DATA, &data) == 0;
 }
 
 static inline bool do_rlimit_setup(xr_option_t *option) {
@@ -62,18 +72,9 @@ static inline bool do_rlimit_setup(xr_option_t *option) {
          rlimit_cpu_time(option->limit_per_process.time);
 }
 
-static bool get_syscall_info(xr_trace_trap_t *trap) {
-  return false;
-}
-
-static bool get_resource_info(xr_trace_trap_t *trap) {
-  struct rusage resource;
-  if (getrusage(trap->thread->tid, &resource) == -1) {
-    return false;
-  }
-  trap->process->time =
-    xr_time_from_timeval(resource.ru_stime, resource.ru_utime);
-  trap->process->memory = resource.ru_maxrss;
+static bool get_resource_info(xr_trace_trap_t *trap, struct rusage *ru) {
+  trap->process->time = xr_time_from_timeval(ru->ru_stime, ru->ru_utime);
+  trap->process->memory = ru->ru_maxrss;
   return true;
 }
 
@@ -82,13 +83,13 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
   xr_thread_t *thread = _XR_NEW(xr_thread_t);
   process->pid = child;
   process->nthread = 0;
+  process->compat = XR_COMPAT_SYSCALL_INVALID;
 
   xr_list_init(&(process->threads));
   xr_list_add(&(tracer->processes), &(process->processes));
   tracer->nprocess++;
   tracer->nthread++;
 
-  thread->compat = xr_ptrace_tracer_syscall_compat(child);
   thread->tid = child;
   thread->syscall_status = XR_THREAD_CALLOUT;
   // Current state should be XR_THREAD_CALLIN, Since child process will be
@@ -142,14 +143,18 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
     _exit(1);
   }
 
+  int status = 0;
+  int child = waitpid(fork_ret, &status, 0);
+
   // try to read error info
   struct __xr_ptrace_tracer_pipe_info error = {};
   read(error_pipe[0], &error, sizeof(error));
   // close all pipe
   xr_close_pipe(error_pipe);
 
-  int status = 0;
-  int child = waitpid(fork_ret, &status, 0);
+  if (child != fork_ret) {
+    return _XR_TRACER_ERROR(tracer, "unexpected child %d created.", child);
+  }
 
   // error occurred.
   if (WIFEXITED(status)) {
@@ -167,16 +172,20 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
       fork_ret);
   }
 
+  xr_thread_t *thread = create_spawned_process(tracer, fork_ret);
+  if (thread == NULL) {
+    return _XR_TRACER_ERROR(tracer, "ptrace create a process error.");
+  }
+
   if (ptrace(PTRACE_SYSCALL, fork_ret, NULL, NULL) == -1) {
     return _XR_TRACER_ERROR(tracer, "ptrace tracer PTRACE_SYSCALL failed.");
   }
 
-  xr_thread_t *thread = create_spawned_process(tracer, fork_ret);
   return true;
 }
 
 bool xr_ptrace_tracer_step(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
-  return ptrace(PTRACE_SYSCALL, trap->thread->tid, NULL, NULL);
+  return ptrace(PTRACE_SYSCALL, trap->thread->tid, NULL, NULL) == 0;
 }
 
 // since thread->syscall_status is 0 or 1, fliping it by xor
@@ -184,14 +193,6 @@ bool xr_ptrace_tracer_step(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   do {                                       \
     (thread)->syscall_status ^= 1;           \
   } while (0)
-
-/*
- * the implementation is in arch/ptrace_*.c depending on XR_ARCH_* marco.
- */
-extern bool xr_ptrace_tracer_peek_syscall(int pid,
-                                          xr_trace_trap_syscall_t *syscall_info,
-                                          int compat);
-extern int xr_ptrace_tracer_syscall_compat(int pid);
 
 // we expire execve and execveat
 // using stub marco to prevent populate
@@ -209,7 +210,7 @@ extern int xr_ptrace_tracer_syscall_compat(int pid);
 bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   struct rusage ru;
   int status;
-  pid_t pid = wait(&status);
+  pid_t pid = wait3(&status, 0, &ru);
   if (pid == -1) {
     return _XR_TRACER_ERROR(tracer, "waiting child failed.");
   }
@@ -239,13 +240,21 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   if (WIFEXITED(status)) {
     trap->trap = XR_TRACE_TRAP_EXIT;
     trap->exit_code = WEXITSTATUS(status);
-  } else if (WSTOPSIG(status) != SIGTRAP) {
+  } else if (WSTOPSIG(status) != (SIGTRAP | 0x80)) {
     trap->trap = XR_TRACE_TRAP_SIGNAL;
     trap->stop_signal = WSTOPSIG(status);
   } else {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
+
+    if (trap->process->compat == XR_COMPAT_SYSCALL_INVALID) {
+      trap->process->compat = xr_ptrace_tracer_syscall_compat(pid);
+      if (trap->process->compat == XR_COMPAT_SYSCALL_INVALID) {
+        return _XR_TRACER_ERROR(tracer, "dectect system compat mode failed");
+      }
+    }
+
     if (xr_ptrace_tracer_peek_syscall(pid, &trap->syscall_info,
-                                      thread->compat) == false) {
+                                      process->compat) == false) {
       return _XR_TRACER_ERROR(
         tracer, "getting system call infomation of process %d failed.",
         trap->process->pid);
@@ -253,14 +262,13 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
 
     if (trap->syscall_info.syscall == XR_SYSCALL_EXECVE__STUB ||
         trap->syscall_info.syscall == XR_SYSCALL_EXECVEAT__STUB) {
-      if (xr_ptrace_tracer_syscall_compat(pid) == -1) {
-        return _XR_TRACER_ERROR(tracer, "getting system compat mode failed");
-      }
+      // we will detect syscall compat mode in next syscall
+      trap->process->compat = XR_COMPAT_SYSCALL_INVALID;
     }
     __flip_thread_syscall_status(trap->thread);
   }
 
-  if (get_resource_info(trap) == false) {
+  if (get_resource_info(trap, &ru) == false) {
     return _XR_TRACER_ERROR(
       tracer, "getting resource information of process %d failed.",
       trap->process->pid);
@@ -269,7 +277,6 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   return true;
 }
 
-const static unsigned long __xr_address_mask = sizeof(long) - 1;
 const static unsigned long __xr_address_align = -sizeof(long);
 
 bool xr_ptrace_tracer_get(xr_tracer_t *tracer, int pid, void *address,
@@ -311,7 +318,7 @@ bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
     if (need < sizeof(long)) {
       data_ = ptrace(PTRACE_PEEKDATA, pid, addr, NULL);
     }
-    memcpy((void *)(addr + offset), buffer, need);
+    memcpy((void *)(data + offset), buffer, need);
 
     ptrace(PTRACE_POKEDATA, pid, addr, NULL);
 

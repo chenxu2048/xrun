@@ -71,7 +71,6 @@ bool xrn_parse_options(int argc, char *argv[], xrn_option_t *option,
   int option_index = -1;
   opterr = 0;
   char *sopt = xrn_make_short_option(option);
-  size_t sopt_len = strlen(sopt);
   struct option *gopt = xrn_make_option(option);
   while (true) {
     option_index = -1;

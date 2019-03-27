@@ -10,7 +10,9 @@
 
 typedef xr_string_t xr_path_t;
 
-#define xr_path_delete xr_string_delete;
+static inline void xr_path_delete(xr_path_t *path) {
+  return xr_string_delete(path);
+}
 
 static xr_path_t xr_path_slash = {
   .capacity = 2,

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "xrun/checker.h"
+#include "xrun/checkers.h"
 #include "xrun/option.h"
 #include "xrun/process.h"
 #include "xrun/result.h"
@@ -111,4 +112,16 @@ bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...) {
   xr_string_concat(&error->msg, &emsg);
   xr_string_delete(&emsg);
   return false;
+}
+
+bool xr_tracer_add_checker(xr_tracer_t *tracer, xr_checker_id_t cid) {
+  xr_checker_t *checker = _XR_NEW(xr_checker_t);
+  if (cid >= sizeof(xr_checker_init_funcs) / sizeof(xr_checker_init_f)) {
+    return _XR_TRACER_ERROR(tracer, "add checker with invalid checker id");
+  } else if (xr_checker_init_funcs[cid] == NULL) {
+    return _XR_TRACER_ERROR(tracer, "checker init function does not exist.");
+  }
+  xr_checker_init_funcs[cid](checker);
+  xr_list_add(&tracer->checkers, &checker->checkers);
+  return true;
 }

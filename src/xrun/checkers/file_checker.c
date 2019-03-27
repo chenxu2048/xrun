@@ -20,12 +20,18 @@ bool xr_file_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
   return true;
 }
 
+#define __do_file_flags_check_contain(flimit, fflags) \
+  ((flimit)->mode == XR_FILE_ACCESS_CONTAIN &&        \
+   (flimit)->flags == (fflags | (flimit)->flags))
+
+#define __do_file_flags_check_match(flimit, fflags) \
+  ((flimit)->mode == XR_FILE_ACCESS_MATCH && (flimit)->flags == fflags)
+
 // fflags is the subset of flags in bits in contain mode.
 // or fflags match the flags in match mode.
 #define __do_file_flags_check(flimit, fflags)       \
-  (((flimit).mode == XR_FILE_ACCESS_CONTAIN &&      \
-    (flimit).flags == (flimit).flags | (fflags)) || \
-   ((flimit).mode == XR_FILE_ACCESS_MATCH && (flimit).flags == (fflags)))
+  (__do_file_flags_check_contain(flimit, fflags) || \
+   __do_file_flags_check_match(flimit, fflags))
 
 static inline bool __do_file_access_check(xr_tracer_t *tracer, xr_path_t *path,
                                           long flags) {
@@ -33,7 +39,7 @@ static inline bool __do_file_access_check(xr_tracer_t *tracer, xr_path_t *path,
   size_t flength = tracer->option->n_file_access;
   for (int i = 0; i < flength; ++i) {
     if (xr_string_equal(&(flist[i].path), path) &&
-        __do_file_flags_check(flist[i], flags)) {
+        __do_file_flags_check(&flist[i], flags)) {
       // path in flist and flags is ok
       return true;
     }
@@ -45,7 +51,7 @@ static inline bool __do_file_access_check(xr_tracer_t *tracer, xr_path_t *path,
   flength = tracer->option->n_dir_access;
   for (int i = 0; i < flength; ++i) {
     if (xr_path_contains(&(flist[i].path), path) &&
-        __do_file_flags_check(flist[i], flags)) {
+        __do_file_flags_check(&flist[i], flags)) {
       // one directory contains path and flags is ok
       return true;
     }

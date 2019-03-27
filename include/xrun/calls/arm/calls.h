@@ -5,8 +5,8 @@
 
 #include "./calls_arm.h"
 
-#define XR_SYSCALL_COMPAT_ARM_OABI 0
-#define XR_SYSCALL_COMPAT_ARM_EABI 1
+#define XR_COMPAT_SYSCALL_ARM_EABI 1
+#define XR_COMPAT_SYSCALL_ARM_OABI 2
 
 static inline int xr_calls_convert_impl(const char *name, int compat) {
   for (int i = 0; i <= XR_SYSCALL_MAX; ++i) {

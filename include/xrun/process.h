@@ -17,18 +17,7 @@ struct xr_process_s {
   xr_list_t processes;
   xr_list_t threads;
   int nthread;
-
-#if defined(__X86_64__) || defined(__X86__) || defined(__X32__)
-  enum _xr_syscall_compat_s {
-#ifdef __X86_64__
-    XR_SYSCALL_COMPAT_MODE_X64,
-#elif defined(__X32__)
-    XR_SYSCALL_COMPAT_MODE_X32,
-#else
-    XR_SYSCALL_COMPAT_MODE_X86,
-#endif
-  } syscall_mode;
-#endif
+  int compat;
 };
 
 struct xr_thread_s {
@@ -41,8 +30,6 @@ struct xr_thread_s {
 
   xr_fs_t fs;
   xr_file_set_t fset;
-
-  int compat;
 
   xr_process_t *process;
   xr_list_t threads;

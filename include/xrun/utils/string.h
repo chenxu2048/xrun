@@ -125,6 +125,7 @@ static inline bool xr_string_vformat(xr_string_t *str, const char *format,
   }
   str->length = wrote;
   str->string[str->length] = 0;
+  return true;
 }
 
 static inline void xr_string_format(xr_string_t *str, const char *format, ...) {

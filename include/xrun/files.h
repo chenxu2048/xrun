@@ -76,8 +76,7 @@ static inline void __xr_file_dup(xr_file_t *file, xr_file_t *dfile) {
  * @dfile new file pointer
  * @dup_fd file descriptor of new file
  */
-static inline xr_file_t *xr_file_dup(xr_file_t *file, xr_file_t *dfile,
-                                     int dup_fd) {
+static inline void xr_file_dup(xr_file_t *file, xr_file_t *dfile, int dup_fd) {
   __xr_file_dup(file, dfile);
   dfile->fd = dup_fd;
 }
@@ -108,8 +107,8 @@ static inline void xr_file_set_delete(xr_file_set_t *fset) {
  * @@fset
  * @sfset shared file set
  */
-static inline xr_file_set_t *xr_file_set_share(xr_file_set_t *fset,
-                                               xr_file_set_t *sfset) {
+static inline void xr_file_set_share(xr_file_set_t *fset,
+                                     xr_file_set_t *sfset) {
   sfset->data = fset->data;
   sfset->own = false;
 }

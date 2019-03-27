@@ -54,8 +54,8 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
       return false;
     }
     // CLONE_THREAD make new task be in the same thread group of caller task
-    fork = (clone_flags & CLONE_THREAD == 0);
-    clone_files = (clone_flags & CLONE_FILES == 0);
+    fork = ((clone_flags & CLONE_THREAD) == 0);
+    clone_files = ((clone_flags & CLONE_FILES) == 0);
   } else {
     // fork and vfork make new process
     fork = true;

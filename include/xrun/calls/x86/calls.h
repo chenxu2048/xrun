@@ -5,9 +5,9 @@
 
 #ifdef XR_ARCH_X86_64
 
-#define XR_SYSCALL_X86_COMPAT_64 0
-#define XR_SYSCALL_X86_COMPAT_X32 1
-#define XR_SYSCALL_X86_COMPAT_IA32 2
+#define XR_COMPAT_SYSCALL_X86_64 1
+#define XR_COMPAT_SYSCALL_X86_X32 2
+#define XR_COMPAT_SYSCALL_X86_IA32 3
 
 #define XR_ARCH_X86_IA32
 #endif
@@ -27,7 +27,7 @@ static inline int xr_calls_convert_ia32_impl(const char *name) {
 
 static inline int xr_calls_convert_impl(const char *name, int compat) {
   switch (compat) {
-    case XR_SYSCALL_X86_COMPAT_64: {
+    case XR_COMPAT_SYSCALL_X86_64: {
       for (int i = 0; i <= XR_SYSCALL_MAX; ++i) {
         if (strcmp(name, xr_syscall_table_x64[i]) == 0) {
           return i;
@@ -35,7 +35,7 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
       }
       break;
     }
-    case XR_SYSCALL_X86_COMPAT_X32: {
+    case XR_COMPAT_SYSCALL_X86_X32: {
       for (int i = XR_SYSCALL_MAX; i >= 0; --i) {
         if (strcmp(name, xr_syscall_table_x64[i]) == 0) {
           return i;
@@ -43,7 +43,7 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
       }
       break;
     }
-    case XR_SYSCALL_X86_COMPAT_IA32: {
+    case XR_COMPAT_SYSCALL_X86_IA32: {
       int scno = xr_calls_convert_ia32_impl(name);
       if (scno != -1) {
         return xr_syscall_table_x86_to_x64[scno];
@@ -56,8 +56,8 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
   return -1;
 }
 
-static const char *const xr_calls_name_impl(long scno, int compat) {
-  if (compat == XR_SYSCALL_X86_COMPAT_IA32) {
+static inline const char *const xr_calls_name_impl(long scno, int compat) {
+  if (compat == XR_COMPAT_SYSCALL_X86_IA32) {
     return XR_IA32_SYSCALL_MAX > scno ? xr_syscall_table_ia32[scno] : "invalid";
   } else {
     return XR_X64_SYSCALL_MAX > scno ? xr_syscall_table_x64[scno] : "invalid";
@@ -70,7 +70,7 @@ static const char *const xr_calls_name_impl(long scno, int compat) {
 
 #undef XR_CALLS_NAME
 #define XR_CALLS_NAME(scno, compat) \
-  xr_calls_name_impl(scno, XR_SYSCALL_X86_COMPAT_IA32)
+  xr_calls_name_impl(scno, XR_COMPAT_SYSCALL_X86_IA32)
 
 #endif
 

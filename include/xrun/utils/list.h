@@ -29,6 +29,7 @@ static inline bool xr_list_empty(xr_list_t *list) {
 static inline void xr_list_add(xr_list_t *prev, xr_list_t *elem) {
   elem->prev = prev;
   elem->next = prev->next;
+  prev->next->prev = elem;
   prev->next = elem;
 }
 
@@ -46,7 +47,7 @@ static inline void xr_list_init(xr_list_t *head) {
 
 #define _xr_list_for_each_entry(head, entry, type, member) \
   for (entry = xr_list_entry((head)->next, type, member);  \
-       entry->member.next != (head);                       \
+       &entry->member != (head);                           \
        entry = xr_list_entry(entry->member.next, type, member))
 
 #define _xr_list_for_each_r(head, cur) \
@@ -54,7 +55,7 @@ static inline void xr_list_init(xr_list_t *head) {
 
 #define _xr_list_for_each_entry_r(head, entry, type, member) \
   for (entry = xr_list_entry((head)->prev, type, member);    \
-       entry->member.prev != (head);                         \
+       &entry->member != (head)->prev;                       \
        entry = xr_list_entry(entry->member.prev, type, member))
 
 #define _xr_list_for_each_safe(head, cur, temp)             \

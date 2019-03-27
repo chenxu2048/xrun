@@ -255,7 +255,6 @@ static int xr_json_handle_boolean(void *ctx, int b) {
 
 static int xr_json_handle_number(void *ctx, const char *string,
                                  size_t string_length) {
-  yajl_val v;
   char *endptr;
 
   xr_json_t *json = xr_json_alloc(yajl_t_number);
@@ -383,10 +382,10 @@ xr_json_t *xr_json_parse(FILE *json, xr_string_t *error) {
 
     if (status != yajl_status_ok) {
       unsigned char *yajl_error = yajl_get_error(handle, 1, buffer, nread);
-      _XR_JSON_CTX_ERROR(&ctx, yajl_error);
+      _XR_JSON_CTX_ERROR(&ctx, (char *)yajl_error);
       yajl_free_error(handle, yajl_error);
       xr_json_free(ctx.root);
-      ctx.root == NULL;
+      ctx.root = NULL;
       break;
     }
   }

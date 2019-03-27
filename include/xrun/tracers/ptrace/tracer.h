@@ -1,9 +1,11 @@
 #ifndef _XR_PTRACE_TRACER
 #define _XR_PTRACE_TRACER
 
-#include "xrun/utils/string.h"
-
 #include <stdbool.h>
+
+#include "xrun/entry.h"
+#include "xrun/tracer.h"
+#include "xrun/utils/string.h"
 
 typedef struct xr_tracer_s xr_tracer_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;

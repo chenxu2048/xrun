@@ -142,6 +142,7 @@ bool xrn_file_limit_read(char *path, xr_file_limit_t *flimit) {
   }
   xr_string_init(&(flimit->path), flag - path);
   xr_string_concat_raw(&(flimit->path), path, flag - path - 1);
+  flimit->mode = mode;
   return true;
 }
 
