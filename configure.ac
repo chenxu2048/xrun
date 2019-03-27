@@ -24,15 +24,52 @@ AC_CHECK_HEADERS([fcntl.h limits.h stddef.h stdlib.h string.h sys/time.h unistd.
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
 AC_C_INLINE
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
 
 # Checks for library functions.
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_FUNC_FORK
-AC_CHECK_FUNCS([memchr memset strtol])
+AC_CHECK_FUNCS([memchr memset strtol strerror dup2])
+
+AC_ARG_ENABLE([debug],
+  [AS_HELP_STRING([--enable-debug],
+                  [whether to include debug symbols (default is no)])],
+  [debug=$enableval],
+  [debug=no]
+)
+
+AM_CONDITIONAL([DEBUG], [test x$debug = xyes])
+
+test -z "$SED" && SED=sed
+if test "x$debug" = xyes; then
+  # Remove all optimization flags from CFLAGS
+  changequote({,})
+  CFLAGS=`echo "$CFLAGS" | $SED -e 's/-O[0-9s]*//g'`
+  CXXFLAGS=`echo "$CXXFLAGS" | $SED -e 's/-O[0-9s]*//g'`
+
+  CFLAGS=`echo "$CFLAGS" | $SED -e 's/-g[0-9]*//g'`
+  CXXFLAGS=`echo "$CXXFLAGS" | $SED -e 's/-g[0-9]*//g'`
+  changequote([,])
+
+  CFLAGS="$CFLAGS -g3 -O0 -Wall"
+  CXXFLAGS="$CXXFLAGS -g3 -O0 -Wall"
+else
+  # Remove debug flags
+  changequote({,})
+  CFLAGS=`echo "$CFLAGS" | $SED -e 's/-g[0-9]*//g'`
+  CXXFLAGS=`echo "$CXXFLAGS" | $SED -e 's/-g[0-9]*//g'`
+  changequote([,])
+fi
+
+echo "CFLAGS=$CFLAGS"
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile

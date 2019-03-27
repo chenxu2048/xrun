@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I $(top_srcdir)/include
+AM_CFLAGS = -I $(top_srcdir)/include
 
 xruncdir = $(bindir)
 xrunc_PROGRAMS = xrunc

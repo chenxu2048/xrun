@@ -1,5 +1,5 @@
 AM_LDFLAGS = -shared -fPIC
-AM_CPPFLAGS = -I $(top_srcdir)/include -fPIC
+AM_CFLAGS = -I $(top_srcdir)/include -fPIC
 
 CHECKERS=checkers/io_checker.c checkers/file_checker.c checkers/fork_checker.c checkers/resource_checker.c checkers/syscall_checker.c
 
