@@ -1,7 +1,8 @@
+#define _GNU_SOURCE
+
 #include <stdbool.h>
 #include <stdlib.h>
 
-#define _GNU_SOURCE
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/ptrace.h>
@@ -11,30 +12,36 @@
 #include <unistd.h>
 
 #include "xrun/calls.h"
+#include "xrun/entry.h"
 #include "xrun/option.h"
 #include "xrun/tracer.h"
 #include "xrun/tracers/ptrace/tracer.h"
 #include "xrun/utils/utils.h"
 
-static inline bool __do_set_stdio(int stdio, int fd, int flag) {
-  int fd_flag = fcntl(fd, F_GETFD);
-  if (errno != 0) {
-    fd_flag = flag;
-  }
-  fd_flag &= ~O_CLOEXEC;
-  /* try dup fd to stdio */
-  return dup2(fd, stdio) != -1 && fcntl(stdio, F_SETFD, fd_flag) != 1;
-}
-
-static inline bool do_exec(xr_tracer_t *tracer, xr_entry_t *entry) {
-  ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-  const int flag = O_CREAT | O_TRUNC | O_WRONLY;
-  for (int i = 0; i < 3; ++i) {
-    if (__do_set_stdio(i, entry->stdio[i], i & flag) == false) {
-      _XR_TRACER_ERROR(tracer, "dup file %d error.", i);
-      return false;
+// we try to set close on exec for any other file description
+static inline void xr_ptrace_try_cloexec() {
+  struct rlimit limit;
+  if (getrlimit(RLIMIT_NOFILE, &limit) == 0) {
+    for (int i = 3; i < limit.rlim_cur; ++i) {
+      fcntl(i, F_SETFD, FD_CLOEXEC);
     }
   }
+}
+
+static inline void do_exec(xr_tracer_t *tracer, xr_entry_t *entry) {
+  if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1) {
+    _XR_TRACER_ERROR(tracer, "PTRACE_TRACEME error.");
+    return;
+  }
+  for (int i = 0; i < 3; ++i) {
+    if (dup2(i, entry->stdio[i]) == -1) {
+      _XR_TRACER_ERROR(tracer, "dup file %d error.", i);
+      return;
+    }
+  }
+  xr_ptrace_try_cloexec();
+  xr_entry_execve(entry);
+  _XR_TRACER_ERROR(tracer, "execvpe error.");
 }
 
 static inline bool rlimit_cpu_time(xr_time_t time) {
@@ -106,31 +113,24 @@ struct __xr_ptrace_tracer_pipe_info {
     close(pipe[1]);         \
   } while (0)
 
-bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
+bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
   // open pipe for delivering error
   int error_pipe[2] = {};
-  if (pipe(error_pipe) == -1) {
+  if (pipe2(error_pipe, O_NONBLOCK | O_CLOEXEC) == -1) {
     return _XR_TRACER_ERROR(tracer, "ptrace_tracer popen error pipe failed.");
-  }
-  for (int i = 0; i < 2; ++i) {
-    int flag = fcntl(error_pipe[i], F_GETFD, 0);
-    if (fcntl(error_pipe[i], F_SETFD, flag | O_CLOEXEC) == -1) {
-      return _XR_TRACER_ERROR(tracer,
-                              "ptracer_tracer pipe close_on_exec failed.");
-    }
   }
 
   // do fork here
-  pid_t fork_ret = vfork();
+  pid_t fork_ret = fork();
 
   // fork error
   if (fork_ret < 0) {
-    return _XR_TRACER_ERROR(tracer, "ptrace_tracer vfork failed.");
+    return _XR_TRACER_ERROR(tracer, "ptrace_tracer fork failed.");
   }
 
   // in child process
   if (fork_ret == 0) {
-    do_exec(tracer, NULL);
+    do_exec(tracer, entry);
 
     // exec failed. die here
     // send tracer->error into pipe
@@ -153,21 +153,21 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer) {
 
   // error occurred.
   if (WIFEXITED(status)) {
-    xr_tracer_error(tracer, error.msg);
-    errno = error.eno;
+    xr_string_concat_raw(&tracer->error.msg, error.msg,
+                         __XR_PTRACE_TRACER_PIPE_ERR);
     return _XR_TRACER_ERROR(tracer, "waiting first child %d failed.", fork_ret);
   }
 
   // set options here
   if (ptrace(PTRACE_SETOPTIONS, fork_ret, NULL,
              PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK |
-               PTRACE_O_TRACEFORK) == 0) {
+               PTRACE_O_TRACEFORK) == -1) {
     return _XR_TRACER_ERROR(
       tracer, "ptrace tracer PTRACE_SETOPTIONS for process %d failed.",
       fork_ret);
   }
 
-  if (ptrace(PTRACE_SYSCALL, fork_ret, NULL, NULL)) {
+  if (ptrace(PTRACE_SYSCALL, fork_ret, NULL, NULL) == -1) {
     return _XR_TRACER_ERROR(tracer, "ptrace tracer PTRACE_SYSCALL failed.");
   }
 

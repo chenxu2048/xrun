@@ -14,14 +14,14 @@ UTILS=utils/json.c utils/list.c
 
 xrunlibdir = $(libdir)
 xrunlib_PROGRAMS = libxrun.so
-libxrun_so_SOURCES = process.c tracer.c \
+libxrun_so_SOURCES = process.c tracer.c entry.c \
    $(UTILS) \
    $(CALLS) \
    $(CHECKERS) \
    $(TRACERS)
 
 xrunlib_LIBRARIES = libxrun.a
-libxrun_a_SOURCES = process.c tracer.c \
+libxrun_a_SOURCES = process.c tracer.c entry.c \
    $(UTILS) \
    $(CALLS) \
    $(CHECKERS) \

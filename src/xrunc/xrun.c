@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include "xrun/entry.h"
 #include "xrun/result.h"
 #include "xrun/tracer.h"
 #include "xrun/tracers/ptrace/tracer.h"
@@ -10,6 +11,8 @@
 #include "xrunc/config.h"
 #include "xrunc/file_limit.h"
 #include "xrunc/option.h"
+
+extern char **environ;
 
 #define XRN_GLOBAL_OPTION_SLOT_SIZE 128
 
@@ -371,6 +374,8 @@ int main(int argc, char *argv[]) {
   }
   cfg.entry.argv[entry_argc] = NULL;
 
+  cfg.entry.environs = environ;
+
   if (cfg.config_path != NULL &&
       xrn_config_parse(cfg.config_path, &cfg.option, &cfg.error) == false) {
     xrn_print_error(&cfg.error);
@@ -392,6 +397,11 @@ int main(int argc, char *argv[]) {
                            &cfg.error) == false) {
       goto xrn_parse_option_error;
     }
+  }
+
+  xr_string_copy(&cfg.entry.root, &xr_path_slash);
+  for (int i = 0; i < 3; ++i) {
+    cfg.entry.stdio[i] = i;
   }
 
   xr_tracer_t tracer;

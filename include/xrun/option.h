@@ -28,16 +28,6 @@ struct xr_file_limit_s {
   } mode;
 };
 
-struct xr_entry_s;
-typedef struct xr_entry_s xr_entry_t;
-
-struct xr_entry_s {
-  xr_path_t path, pwd, root;
-  int user;
-  int stdio[3];
-  char **argv;
-};
-
 struct xr_option_s;
 typedef struct xr_option_s xr_option_t;
 

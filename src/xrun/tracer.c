@@ -10,7 +10,7 @@
 
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
                      xr_tracer_result_t *result) {
-  if (tracer->spwan(tracer) == false) {
+  if (tracer->spwan(tracer, entry) == false) {
     return _XR_TRACER_ERROR(tracer, "tracer spwan error.");
   }
   xr_trace_trap_t trap = {.trap = XR_TRACE_TRAP_NONE};

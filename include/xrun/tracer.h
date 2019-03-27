@@ -17,7 +17,7 @@ typedef struct xr_trace_trap_s xr_trace_trap_t;
 typedef struct xr_error_s xr_error_t;
 typedef struct xr_entry_s xr_entry_t;
 
-typedef bool xr_tracer_op_spawn_f(xr_tracer_t *tracer);
+typedef bool xr_tracer_op_spawn_f(xr_tracer_t *tracer, xr_entry_t *entry);
 
 typedef bool xr_tracer_op_step_f(xr_tracer_t *tracer, xr_trace_trap_t *trap);
 

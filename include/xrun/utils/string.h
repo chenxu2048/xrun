@@ -66,7 +66,7 @@ static inline void xr_string_grow(xr_string_t *str, int capacity) {
  */
 static inline void xr_string_copy(xr_string_t *dst, xr_string_t *src) {
   if (src != dst) {
-    xr_string_grow(src, dst->length + 1);
+    xr_string_grow(dst, src->length + 1);
     strncpy(dst->string, src->string, src->length);
     dst->string[src->length] = 0;
     dst->length = src->length;
@@ -110,7 +110,7 @@ static inline bool xr_string_start_with(xr_string_t *str, xr_string_t *head) {
 
 static inline bool xr_string_equal(xr_string_t *lhs, xr_string_t *rhs) {
   return lhs->length == rhs->length &&
-         strncmp(lhs->string, rhs->string, lhs->length);
+         strncmp(lhs->string, rhs->string, lhs->length) == 0;
 }
 
 static inline bool xr_string_vformat(xr_string_t *str, const char *format,
