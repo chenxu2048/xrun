@@ -15,5 +15,6 @@ $(SRCDIR)/calls.c: $(MKSRC) $(TBLDIR)/arm.tbl
 	echo "Making calls.c for arm."
 	sh $(MKSRC) $(TBLDIR)/arm.tbl $(SRCDIR)/calls.c
 
+.PHONY: clean
 clean:
 	rm -f $(HDRDIR)/calls_arm.h $(SRCDIR)/calls.c

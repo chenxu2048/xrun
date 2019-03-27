@@ -37,6 +37,7 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_FUNC_FORK
+AC_FUNC_WAIT3
 AC_CHECK_FUNCS([memchr memset strtol strerror dup2])
 
 AC_ARG_ENABLE([debug],
@@ -68,8 +69,6 @@ else
   CXXFLAGS=`echo "$CXXFLAGS" | $SED -e 's/-g[0-9]*//g'`
   changequote([,])
 fi
-
-echo "CFLAGS=$CFLAGS"
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile

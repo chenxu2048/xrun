@@ -24,5 +24,6 @@ $(SRCDIR)/calls_32.c: $(MKSRC) $(TBLDIR)/x86.tbl
 	echo "Making calls.c for ia32."
 	sh $(MKSRC) $(TBLDIR)/x86.tbl $(SRCDIR)/calls_32.c
 
+.PHONY: clean
 clean:
 	rm -f $(HDRDIR)/calls_64.h $(SRCDIR)/calls_64.c $(HDRDIR)/calls_32.h $(SRCDIR)/calls_32.c
