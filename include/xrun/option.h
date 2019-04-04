@@ -38,6 +38,10 @@ struct xr_option_s {
   size_t n_file_access;
   xr_file_limit_t *dir_access;
   size_t n_dir_access;
+  enum xr_file_access_mode_e {
+    XR_FILE_ACCESS_MODE_IT = 0x0,
+    XR_FILE_ACCESS_MODE_OT = 0x1,
+  } access_mode;
   bool call_access[XR_SYSCALL_MAX];
 
   xr_limit_t limit, limit_per_process;

@@ -23,7 +23,7 @@ struct xr_process_s {
 struct xr_thread_s {
   int tid;
 
-  enum {
+  enum xr_thread_syscall_status_e {
     XR_THREAD_CALLIN = 0,
     XR_THREAD_CALLOUT = 1,
   } syscall_status;

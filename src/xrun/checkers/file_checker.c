@@ -6,7 +6,15 @@
 #include "xrun/option.h"
 #include "xrun/tracer.h"
 
-static struct xr_file_checker_private_s {};
+static struct xr_file_checker_data_s {
+  enum xr_thread_syscall_status_e trick;
+  xr_file_t file;
+};
+
+static inline struct xr_file_checker_data_s *xr_file_checker_data(
+  xr_checker_t *checker) {
+  return (struct xr_file_checker_data_s *)(checker->checker_data);
+}
 
 void xr_file_checker_init(xr_checker_t *checker) {
   checker->setup = xr_file_checker_setup;
@@ -14,9 +22,14 @@ void xr_file_checker_init(xr_checker_t *checker) {
   checker->result = xr_file_checker_result;
   checker->_delete = xr_file_checker_delete;
   checker->checker_id = XR_CHECKER_FILE;
+  checker->checker_data = _XR_NEW(xr_file_checker_data_s);
+  xr_file_init(&xr_file_checker_data(checker)->file);
 }
 
-bool xr_file_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
+bool xr_file_checker_setup(xr_checker_t *checker, xr_option_t *option) {
+  xr_file_checker_data(checker)->trick =
+    option->access_mode == XR_FILE_ACCESS_MODE_IT ? XR_THREAD_CALLIN
+                                                  : XR_THREAD_CALLOUT;
   return true;
 }
 
@@ -98,7 +111,7 @@ static inline bool __do_process_chdir(xr_trace_trap_t *trap,
 
 static inline bool __do_process_open_file(xr_tracer_t *tracer,
                                           xr_thread_t *thread, xr_path_t *at,
-                                          void *fpath, int fd, long flags) {
+                                          void *fpath, long flags) {
   xr_path_t *path = _XR_NEW(xr_path_t);
   xr_string_init(path, XR_PATH_MAX);
   if (tracer->strcpy(tracer, thread->tid, fpath, path) == false || at == NULL) {
@@ -119,13 +132,17 @@ static inline bool __do_process_open_file(xr_tracer_t *tracer,
     *path = abs_path;
   }
   xr_file_t *file = _XR_NEW(xr_file_t);
-  xr_file_open(file, fd, flags, path);
+  xr_file_open(file, XR_PREV_OPEN_FD, flags, path);
   xr_file_set_add_file(&(thread->fset), file);
 
   return __do_file_access_check(tracer, file->path, file->flags);
 }
 
 #define __CREAT_FLAGS (O_CREAT | O_WRONLY | O_TRUNC)
+#define _XR_CHECK_ENABLE_IT(trick, thread_status) \
+  (trick == XR_FILE_ACCESS_MODE_IT && thread_status == XR_THREAD_CALLINT)
+#define _XR_CHECK_ENABLE_OT(trick, thread_status, retval) \
+  (trick == XR_FILE_ACCESS_MODE_OT && thread_status == XR_THREAD_CALLOUT)
 
 bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
                            xr_trace_trap_t *trap) {
@@ -135,7 +152,7 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   int call = trap->syscall_info.syscall;
   long *call_args = trap->syscall_info.args;
   int retval = trap->syscall_info.retval;
-  if (trap->thread->syscall_status == XR_THREAD_CALLOUT && retval == 0) {
+  if (trap->thread->syscall_status == XR_THREAD_CALLIN) {
     switch (call) {
 // handel process working directory changing
 #ifdef XR_SYSCALL_CHDIR
@@ -150,23 +167,22 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 // handle fd creating
 #ifdef XR_SYSCALL_OPEN
       case XR_SYSCALL_OPEN:
-        return __do_process_open_file(
-          tracer, trap->thread, trap->thread->fs.pwd, (void *)call_args[0],
-          retval, call_args[1]);
+        return __do_process_open_file(tracer, trap->thread,
+                                      trap->thread->fs.pwd,
+                                      (void *)call_args[0], call_args[1]);
 #endif
 #ifdef XR_SYSCALL_CREAT
       case XR_SYSCALL_CREAT:
-        return __do_process_open_file(
-          tracer, trap->thread, trap->thread->fs.pwd, (void *)call_args[0],
-          retval, __CREAT_FLAGS);
+        return __do_process_open_file(tracer, trap->thread,
+                                      trap->thread->fs.pwd,
+                                      (void *)call_args[0], __CREAT_FLAGS);
 #endif
 #ifdef XR_SYSCALL_OPENAT
       case XR_SYSCALL_OPENAT: {
         xr_file_t *at_file =
           xr_file_set_select_file(&trap->thread->fset, call_args[0]);
         return __do_process_open_file(tracer, trap->thread, at_file->path,
-                                      (void *)call_args[1], retval,
-                                      call_args[2]);
+                                      (void *)call_args[1], call_args[2]);
       }
 #endif
       default:
@@ -178,8 +194,17 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 
 void xr_file_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
                             xr_tracer_result_t *result, xr_trace_trap_t *trap) {
+  if (trap->trap != XR_TRACE_TRAP_SYSCALL) {
+    result->status = XR_RESULT_UNKNOWN;
+    _XR_TRACER_ERROR(tracer, "Invalid status of file checker.");
+  }
+  result->status = XR_RESULT_PATHDENY;
+  result->etid = trap->thread->tid;
+  result->epid = trap->process->pid;
+  xr_string_copy(&result->epath);
 }
 
 void xr_file_checker_delete(xr_checker_t *checker) {
+  xr_file_delete(xr_file_checker_data(checker)->file);
   return;
 }

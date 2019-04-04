@@ -3,7 +3,7 @@
 #include "xrun/option.h"
 #include "xrun/tracer.h"
 
-bool xr_syscall_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
+bool xr_syscall_checker_setup(xr_checker_t *checker, xr_option_t *option) {
   return true;
 }
 

@@ -22,7 +22,7 @@ static inline bool xr_io_checker_failed(xr_checker_t *checker, xr_file_t *file,
   return false;
 }
 
-bool xr_io_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
+bool xr_io_checker_setup(xr_checker_t *checker, xr_option_t *option) {
   return true;
 }
 

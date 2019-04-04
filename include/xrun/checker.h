@@ -27,7 +27,7 @@ typedef void xr_checker_result_f(xr_checker_t *checker, xr_tracer_t *tracer,
                                  xr_tracer_result_t *result,
                                  xr_trace_trap_t *trap);
 
-typedef bool xr_checker_setup_f(xr_checker_t *checker, xr_tracer_t *tracer);
+typedef bool xr_checker_setup_f(xr_checker_t *checker, xr_option_t *option);
 
 typedef void xr_checker_delete_f(xr_checker_t *checker);
 

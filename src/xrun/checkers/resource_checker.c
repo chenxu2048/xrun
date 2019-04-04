@@ -13,7 +13,7 @@ void xr_resource_checker_init(xr_checker_t *checker) {
   checker->checker_id = XR_CHECKER_RESOURCE;
 }
 
-bool xr_resource_checker_setup(xr_checker_t *checker, xr_tracer_t *tracer) {
+bool xr_resource_checker_setup(xr_checker_t *checker, xr_option_t *option) {
   return true;
 }
 
