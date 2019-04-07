@@ -1,8 +1,12 @@
 {
   "files": [
     {
-      "path": "/dev/urandom",
-      "flags": "O_RDONLY"
+      "path": "/etc/ld.so.cache",
+      "flags": "O_RDONLY+O_CLOEXEC"
+    },
+    {
+      "path": "/lib/x86_64-linux-gnu/libc.so.6",
+      "flags": "O_RDONLY+O_CLOEXEC"
     }
   ],
   "directories": [
@@ -12,8 +16,18 @@
     }
   ],
   "calls": [
-    "open",
-    "read"
+    "access",
+    "openat",
+    "read",
+    "brk",
+    "write",
+    "fstat",
+    "mmap",
+    "close",
+    "mprotect",
+    "arch_prctl",
+    "ioctl",
+    "exit_group"
   ],
   "limit": {
     "memory": 512,

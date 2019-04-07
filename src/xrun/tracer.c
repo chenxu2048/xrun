@@ -52,7 +52,7 @@ bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result,
   xr_checker_t *checker;
   _xr_list_for_each_entry(&(tracer->checkers), checker, xr_checker_t,
                           checkers) {
-    if (_XR_CALLP(checker, check, tracer, trap)) {
+    if (_XR_CALLP(checker, check, tracer, trap) == false) {
       tracer->failed_checker = checker;
       return false;
     };
@@ -68,6 +68,7 @@ void xr_tracer_clean(xr_tracer_t *tracer) {
   _xr_list_for_each_safe(&(tracer->processes), cur, temp) {
     xr_list_del(cur);
     process = xr_list_entry(cur, xr_process_t, processes);
+    tracer->kill(tracer, process->pid);
     xr_process_delete(process);
     free(process);
   }

@@ -79,7 +79,8 @@ static bool get_resource_info(xr_trace_trap_t *trap, struct rusage *ru) {
   return true;
 }
 
-static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
+static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child,
+                                           xr_path_t *pwd) {
   xr_process_t *process = _XR_NEW(xr_process_t);
   xr_thread_t *thread = _XR_NEW(xr_thread_t);
   process->pid = child;
@@ -97,16 +98,15 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
   // trapped when returning from execve. But this syscall should not be
   // reported. Hence syscall_status should be XR_THREAD_CALLOUT and we will skip
   // the first execve syscall by a wait operation before.
+  xr_file_set_create(&thread->fset);
+  xr_fs_create(&thread->fs);
+  xr_string_copy(xr_fs_pwd(&thread->fs), pwd);
 
   xr_process_add_thread(process, thread);
   return thread;
 }
 
 #define __XR_PTRACE_TRACER_PIPE_ERR 256
-
-struct __xr_ptrace_tracer_pipe_info {
-  char msg[__XR_PTRACE_TRACER_PIPE_ERR];
-};
 
 #define xr_close_pipe(pipe) \
   do {                      \
@@ -147,14 +147,15 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
   int child = waitpid(fork_ret, &status, 0);
 
   // try to read error info
-  xr_string_t estr;
   size_t estr_len;
   read(error_pipe[0], &estr_len, sizeof(estr_len));
   if (errno == 0) {
+    xr_string_t estr;
     // read rest
     xr_string_init(&estr, estr_len + 1);
     read(error_pipe[1], estr.string, sizeof(char) * estr_len);
     estr.string[estr_len] = 0;
+    estr.length = estr_len;
     // clear errno
     errno = 0;
     xr_tracer_error(tracer, estr.string);
@@ -181,7 +182,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
       fork_ret);
   }
 
-  xr_thread_t *thread = create_spawned_process(tracer, fork_ret);
+  xr_thread_t *thread = create_spawned_process(tracer, fork_ret, &entry->pwd);
   if (thread == NULL) {
     return _XR_TRACER_ERROR(tracer, "ptrace create a process error.");
   }
@@ -372,4 +373,8 @@ bool xr_ptrace_tracer_strcpy(xr_tracer_t *tracer, int pid, void *address,
     }
   }
   return true;
+}
+
+void xr_ptrace_tracer_kill(xr_tracer_t *tracer, pid_t pid) {
+  ptrace(PTRACE_KILL, pid, 0, 0);
 }

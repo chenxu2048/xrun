@@ -38,12 +38,12 @@ static inline void xr_entry_init(xr_entry_t *entry) {
 }
 
 static inline void xr_entry_delete(xr_entry_t *entry) {
-  if (entry->argv != NULL) {
-    free(entry->argv);
-  }
-  if (entry->environs != NULL) {
-    free(entry->environs);
-  }
+  // if (entry->argv != NULL) {
+  //   free(entry->argv);
+  // }
+  // if (entry->environs != NULL) {
+  //   free(entry->environs);
+  // }
   xr_path_delete(&entry->path);
   xr_path_delete(&entry->pwd);
   xr_path_delete(&entry->root);

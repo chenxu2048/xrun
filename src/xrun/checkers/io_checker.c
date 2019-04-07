@@ -5,21 +5,20 @@
 #include "xrun/process.h"
 #include "xrun/tracer.h"
 
-struct __xr_io_checker_private_s {
+struct xr_io_checker_data_s {
   xr_file_t *file;
   xr_thread_t *thread;
 };
-typedef struct __xr_io_checker_private_s __xr_io_checker_private_t;
+typedef struct xr_io_checker_data_s xr_io_checker_data_t;
 
-static inline __xr_io_checker_private_t *xr_io_checker_private(
-  xr_checker_t *checker) {
-  return (__xr_io_checker_private_t *)(checker->checker_data);
+static inline xr_io_checker_data_t *xr_io_checker_data(xr_checker_t *checker) {
+  return (xr_io_checker_data_t *)(checker->checker_data);
 }
 
 static inline bool xr_io_checker_failed(xr_checker_t *checker, xr_file_t *file,
                                         xr_thread_t *thread) {
-  xr_io_checker_private(checker)->file = file;
-  xr_io_checker_private(checker)->thread = thread;
+  xr_io_checker_data(checker)->file = file;
+  xr_io_checker_data(checker)->thread = thread;
   return false;
 }
 
@@ -60,7 +59,8 @@ static inline bool __do_process_write_check(xr_checker_t *checker,
 
 bool xr_io_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
                          xr_trace_trap_t *trap) {
-  if (trap->trap != XR_TRACE_TRAP_SYSCALL) {
+  if (trap->trap != XR_TRACE_TRAP_SYSCALL ||
+      trap->thread->syscall_status != XR_THREAD_CALLOUT) {
     return true;
   }
   xr_thread_t *thread = trap->thread;
@@ -157,5 +157,5 @@ void xr_io_checker_init(xr_checker_t *checker) {
   checker->result = xr_io_checker_result;
   checker->_delete = xr_io_checker_delete;
   checker->checker_id = XR_CHECKER_IO;
-  checker->checker_data = _XR_NEW(__xr_io_checker_private_t);
+  checker->checker_data = _XR_NEW(xr_io_checker_data_t);
 }

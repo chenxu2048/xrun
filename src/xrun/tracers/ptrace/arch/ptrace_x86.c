@@ -20,6 +20,9 @@
 // offset of rip is 16
 #define XR_X64_ALIGN_MASK ~0x07ul
 
+#define XR_X86_SIGNED_32_BIT 0x80000000
+#define XR_X86_SIGNED_32_BIT_EXTEND 0xffffffff00000000
+
 static inline int xr_ptrace_tracer_syscall_compat_x86(int pid) {
   long rip = ptrace(PTRACE_PEEKUSER, pid, XR_X64_PC_OFFSET, NULL);
   if (errno) {
@@ -86,9 +89,9 @@ static inline bool xr_ptrace_tracer_peek_syscall_x86(
       syscall_info->args[3] = regs.rsi;
       syscall_info->args[4] = regs.rdi;
       syscall_info->args[5] = regs.rbp;
-      if (syscall_info->retval & 0x80000000) {
+      if (syscall_info->retval & XR_X86_SIGNED_32_BIT) {
         // do signed patch
-        syscall_info->retval |= 0xffffffff00000000;
+        syscall_info->retval |= XR_X86_SIGNED_32_BIT_EXTEND;
       }
       break;
     default:

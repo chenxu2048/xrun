@@ -73,6 +73,7 @@ struct xr_tracer_s {
     xr_tracer_op_get_f *get;
     xr_tracer_op_set_f *set;
     xr_tracer_op_strcpy_f *strcpy;
+    xr_tracer_op_kill_f *kill;
   };
 
   xr_option_t *option;

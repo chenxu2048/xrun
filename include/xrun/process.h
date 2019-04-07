@@ -38,10 +38,17 @@ struct xr_thread_s {
 static inline void xr_process_add_thread(xr_process_t *process,
                                          xr_thread_t *thread) {
   process->nthread++;
-  xr_list_add(&(process->threads), &(thread->threads));
+  xr_list_add(&process->threads, &thread->threads);
   thread->process = process;
 }
 
+static inline void xr_process_init(xr_process_t *process) {
+  xr_list_init(&process->processes);
+  xr_list_init(&process->threads);
+}
+static inline void xr_thread_init(xr_thread_t *thread) {
+  xr_list_init(&thread->threads);
+}
 void xr_process_delete(xr_process_t *process);
 void xr_thread_delete(xr_thread_t *thread);
 

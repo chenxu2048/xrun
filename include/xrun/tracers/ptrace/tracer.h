@@ -25,6 +25,8 @@ bool xr_ptrace_tracer_set(xr_tracer_t *tracer, int pid, void *address,
 bool xr_ptrace_tracer_strcpy(xr_tracer_t *tracer, int pid, void *address,
                              xr_string_t *str);
 
+void xr_ptrace_tracer_kill(xr_tracer_t *tracer, pid_t pid);
+
 static inline void xr_tracer_ptrace_init(xr_tracer_t *tracer,
                                          const char *name) {
   xr_tracer_init(tracer, name);
@@ -34,6 +36,7 @@ static inline void xr_tracer_ptrace_init(xr_tracer_t *tracer,
   tracer->get = xr_ptrace_tracer_get;
   tracer->set = xr_ptrace_tracer_set;
   tracer->strcpy = xr_ptrace_tracer_strcpy;
+  tracer->kill = xr_ptrace_tracer_kill;
 }
 
 #endif

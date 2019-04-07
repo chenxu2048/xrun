@@ -67,7 +67,7 @@ static inline void __do_process_close_file(xr_thread_t *thread, int fd) {
 static inline bool __do_process_fchdir(xr_thread_t *thread, int fd) {
   xr_file_t *file = xr_file_set_select_file(&thread->fset, fd);
   if (file != NULL) {
-    xr_string_copy(thread->fs.pwd, &file->path);
+    xr_string_copy(xr_fs_pwd(&thread->fs), &file->path);
   } else {
     // TODO: internal error
     return false;
@@ -162,7 +162,7 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
         xr_string_zero(&path);
         bool result =
           tracer->strcpy(tracer, thread->tid, (void *)call_args[0], &path) &&
-          __do_process_chdir(checker, thread->fs.pwd, &path);
+          __do_process_chdir(checker, xr_fs_pwd(&thread->fs), &path);
         xr_path_delete(&path);
         return result;
       }
@@ -196,8 +196,8 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
     }
 
     long flags = call_args[XR_OPEN_FLAG_ARG(call)];
-    xr_path_t *at = thread->fs.pwd;
-    if (call == XR_SYSCALL_OPENAT) {
+    xr_path_t *at = xr_fs_pwd(&thread->fs);
+    if (call == XR_SYSCALL_OPENAT && (int32_t)call_args[0] != AT_FDCWD) {
       xr_file_t *atfile = xr_file_set_select_file(&thread->fset, call_args[0]);
       at = (atfile == NULL ? NULL : &atfile->path);
     }

@@ -17,6 +17,7 @@ struct xr_file_s {
 };
 
 struct xr_file_set_shared_s {
+  size_t own;
   xr_list_t files;
 
   int file_opened, file_holding;
@@ -24,13 +25,16 @@ struct xr_file_set_shared_s {
 };
 
 struct xr_file_set_s {
-  bool own;
   struct xr_file_set_shared_s *data;
 };
 
+struct xr_fs_shared_s {
+  size_t own;
+  xr_path_t pwd;
+};
+
 struct xr_fs_s {
-  bool own;
-  xr_path_t *pwd;
+  struct xr_fs_shared_s *data;
 };
 
 static inline void xr_file_init(xr_file_t *file) {
@@ -75,13 +79,20 @@ static inline void xr_file_dup(xr_file_t *file, xr_file_t *dfile, int dup_fd) {
   dfile->fd = dup_fd;
 }
 
+static inline void xr_file_set_create(xr_file_set_t *fset) {
+  fset->data = _XR_NEW(struct xr_file_set_shared_s);
+  memset(fset->data, 0, sizeof(struct xr_file_set_shared_s));
+  fset->data->own = 1;
+  xr_list_init(&fset->data->files);
+}
+
 /**
  * Delete file set content.
  *
  * @@fset
  */
 static inline void xr_file_set_delete(xr_file_set_t *fset) {
-  if (!fset->own) {
+  if (fset->data->own-- != 0) {
     return;
   }
   xr_list_t *cur, *temp;
@@ -104,7 +115,7 @@ static inline void xr_file_set_delete(xr_file_set_t *fset) {
 static inline void xr_file_set_share(xr_file_set_t *fset,
                                      xr_file_set_t *sfset) {
   sfset->data = fset->data;
-  sfset->own = false;
+  sfset->data->own++;
 }
 
 /**
@@ -113,13 +124,13 @@ static inline void xr_file_set_share(xr_file_set_t *fset,
  * @@fset
  */
 static inline void xr_file_set_own(xr_file_set_t *fset) {
-  if (fset->own) {
+  if (fset->data->own == 1) {
     return;
   }
   struct xr_file_set_shared_s *data = _XR_NEW(struct xr_file_set_shared_s);
+  data->own = 0;
   data->total_read = fset->data->total_read;
   data->total_write = fset->data->total_write;
-
   // copy file list
   xr_file_t *file;
   xr_list_init(&(data->files));
@@ -128,8 +139,7 @@ static inline void xr_file_set_own(xr_file_set_t *fset) {
     xr_file_dup(file, dfile, file->fd);
     xr_list_add(&data->files, &dfile->files);
   }
-
-  fset->own = true;
+  fset->data->own--;
   fset->data = data;
 }
 
@@ -209,26 +219,37 @@ static inline void xr_file_set_remove_file(xr_file_set_t *fset,
 #define xr_file_set_write(fset, write) \
   xr_file_set_set_write(fset, xr_file_set_get_write(fset) + write)
 
+static inline void xr_fs_create(xr_fs_t *fs) {
+  fs->data = _XR_NEW(struct xr_fs_shared_s);
+  fs->data->own = 1;
+  xr_string_zero(&fs->data->pwd);
+}
+
 static inline void xr_fs_share(xr_fs_t *fs, xr_fs_t *sfs) {
-  sfs->own = false;
-  sfs->pwd = fs->pwd;
+  fs->data->own++;
+  sfs->data = fs->data;
 }
 
 static inline void xr_fs_own(xr_fs_t *fs) {
-  if (fs->own == false) {
-    xr_path_t *pwd = _XR_NEW(xr_path_t);
-    xr_string_init(pwd, fs->pwd->length + 1);
-    xr_string_copy(pwd, fs->pwd);
-    fs->own = true;
-    fs->pwd = pwd;
+  if (fs->data->own >= 1) {
+    struct xr_fs_shared_s *data = _XR_NEW(struct xr_fs_shared_s);
+    xr_string_init(&data->pwd, fs->data->pwd.length + 1);
+    xr_string_copy(&data->pwd, &fs->data->pwd);
+    fs->data->own--;
+    fs->data = data;
   }
 }
 
 static inline void xr_fs_delete(xr_fs_t *fs) {
-  if (fs->own == false) {
+  if (fs->data->own-- != 0) {
     return;
   }
-  xr_path_delete(fs->pwd);
+  xr_path_delete(&fs->data->pwd);
+  free(fs->data);
+}
+
+static inline xr_path_t *xr_fs_pwd(xr_fs_t *fs) {
+  return &fs->data->pwd;
 }
 
 #define xr_fs_clone(fs, sfs) \
