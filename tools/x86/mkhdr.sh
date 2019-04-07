@@ -25,9 +25,13 @@ grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
     echo "#define XR_IA32_SYSCALL_MAX ${CALL_ENTRIES}"
     echo "extern const char *xr_syscall_table_ia32[XR_IA32_SYSCALL_MAX];"
     echo "extern const int xr_syscall_table_x86_to_x64[XR_IA32_SYSCALL_MAX];"
+    echo "#define xr_syscall_x64_from_x86(call) \\"
+    echo "  ((call) < XR_IA32_SYSCALL_MAX ? xr_syscall_table_x86_to_x64[call] : -1)"
   else
     echo "#define XR_X64_SYSCALL_MAX ${CALL_ENTRIES}"
     echo "extern const char *xr_syscall_table_x64[XR_SYSCALL_MAX];"
+    echo "#define XR_X32_SYSCALL_BIT 0x40000000"
+    echo "#define xr_syscall_x64_from_x32(call) ((call) & ~XR_X32_SYSCALL_BIT)"
   fi
   echo
   echo "/* syscall macros */"

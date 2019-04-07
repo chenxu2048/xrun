@@ -18,88 +18,32 @@ extern char **environ;
 
 #define XRN_GLOBAL_OPTION_SLOT_SIZE 128
 
-typedef struct xrn_global_config_set_s xrn_global_config_set_t;
-typedef struct xrn_global_config_access_s xrn_global_access_config_t;
-struct xrn_global_config_access_s {
-  size_t length, capacity;
-  char **access;
-};
-
 struct xrn_global_config_set_s {
   char *config_path;
   bool version, help;
   xr_option_t option;
   xr_entry_t entry;
-  xrn_global_access_config_t faccess, daccess;
   xr_string_t error;
 };
-
-void xrn_global_option_access_init(xrn_global_access_config_t *access) {
-  access->length = 0;
-  access->access = malloc(sizeof(char *) * XRN_GLOBAL_OPTION_SLOT_SIZE);
-  access->capacity = XRN_GLOBAL_OPTION_SLOT_SIZE;
-}
-
-void xrn_global_option_access_delete(xrn_global_access_config_t *access) {
-  free(access->access);
-}
-
-void xrn_global_option_access_append(xrn_global_access_config_t *access,
-                                     char *entry) {
-  if (access->capacity <= access->length) {
-    access->capacity *= 2;
-    access->access = realloc(access->access, access->capacity);
-  }
-  access->access[access->length] = entry;
-  access->length++;
-}
+typedef struct xrn_global_config_set_s xrn_global_config_set_t;
 
 void xrn_global_option_set_init(xrn_global_config_set_t *cfg) {
   cfg->config_path = NULL;
   cfg->version = false;
   cfg->help = false;
-  xr_string_init(&cfg->error, XRN_GLOBAL_OPTION_SLOT_SIZE);
-  xrn_global_option_access_init(&cfg->faccess);
-  xrn_global_option_access_init(&cfg->daccess);
+  xr_string_zero(&cfg->error);
 
   xr_option_t *xropt = &cfg->option;
-  memset(xropt, 0, sizeof(xr_option_t));
+  xr_option_init(xropt);
 
   xr_entry_t *entry = &cfg->entry;
-  xr_string_zero(&entry->path);
-  xr_string_zero(&entry->pwd);
-  xr_string_zero(&entry->root);
-  entry->argv = NULL;
+  xr_entry_init(entry);
 }
 
 void xrn_global_option_set_delete(xrn_global_config_set_t *cfg) {
   xr_string_delete(&cfg->error);
-  xrn_global_option_access_delete(&cfg->faccess);
-  xrn_global_option_access_delete(&cfg->daccess);
-
-  xr_option_t *xropt = &cfg->option;
-  if (xropt->file_access) {
-    for (int i = 0; i < xropt->n_file_access; ++i) {
-      xr_file_limit_delete(xropt->file_access + i);
-    }
-    free(xropt->file_access);
-    xropt->n_file_access = 0;
-  }
-  if (xropt->dir_access) {
-    for (int i = 0; i < xropt->n_dir_access; ++i) {
-      xr_file_limit_delete(xropt->dir_access + i);
-    }
-    free(xropt->dir_access);
-    xropt->n_dir_access = 0;
-  }
-
-  xr_entry_t *xrentry = &cfg->entry;
-  xr_path_delete(&xrentry->path);
-  xr_path_delete(&xrentry->pwd);
-  xr_path_delete(&xrentry->root);
-  if (xrentry->argv != NULL) {
-    free(xrentry->argv);
-  }
+  xr_option_delete(&cfg->option);
+  xr_entry_delete(&cfg->entry);
 }
 
 bool xrn_set_help(char *arg, void *ctx) {
@@ -135,19 +79,19 @@ bool xrn_set_call(char *arg, void *ctx) {
       XR_SYSCALL_MAX, arg);
     return false;
   }
-  cfg->option.call_access[call] = true;
+  cfg->option.calls[call] = true;
   return true;
 }
 
 bool xrn_set_file_entry(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
-  xrn_global_option_access_append(&cfg->faccess, arg);
+  xrn_file_access_read(&cfg->option.files, arg);
   return true;
 }
 
 bool xrn_set_dir_entry(char *arg, void *ctx) {
   xrn_global_config_set_t *cfg = (xrn_global_config_set_t *)ctx;
-  xrn_global_option_access_append(&cfg->daccess, arg);
+  xrn_file_access_read(&cfg->option.directories, arg);
   return true;
 }
 
@@ -325,24 +269,15 @@ xrn_option_t options[] = {
 };
 
 static inline void xrn_print_error(xr_string_t *error) {
-  if (error->string[error->length - 1] != '\n') {
-    xr_string_concat_raw(error, "\n", 2);
+  static xr_string_t newline = {
+    .length = 1,
+    .string = "\n",
+    .capacity = 2,
+  };
+  if (xr_string_end_with(error, &newline) == false) {
+    xr_string_concat(error, &newline);
   }
   fputs(error->string, stderr);
-}
-
-static inline bool xrn_add_file_limit(char **pathes, xr_file_limit_t **limit,
-                                      size_t *nlimit, size_t length,
-                                      xr_string_t *error) {
-  size_t n = *nlimit;
-  *nlimit += length;
-  *limit = realloc(*limit, sizeof(xr_file_limit_t) * (*nlimit));
-  memset((*limit) + n, 0, sizeof(xr_file_limit_t) * length);
-  if (xrn_file_limit_read_all(pathes, length, (*limit) + n, error) == false) {
-    xrn_print_error(error);
-    return false;
-  }
-  return true;
 }
 
 int main(int argc, char *argv[]) {
@@ -362,6 +297,8 @@ int main(int argc, char *argv[]) {
     // xrn_print_version();
     goto xrn_parse_option_error;
   }
+
+  cfg.option.access_trigger = XR_ACCESS_TRIGGER_MODE_IN;
 
   if (optind >= argc) {
     retval = 1;
@@ -386,22 +323,6 @@ int main(int argc, char *argv[]) {
     goto xrn_parse_option_error;
   }
 
-  if (cfg.faccess.length != 0) {
-    if (xrn_add_file_limit(cfg.faccess.access, &cfg.option.file_access,
-                           &cfg.option.n_file_access, cfg.faccess.length,
-                           &cfg.error) == false) {
-      goto xrn_parse_option_error;
-    }
-  }
-
-  if (cfg.daccess.length != 0) {
-    if (xrn_add_file_limit(cfg.daccess.access, &cfg.option.dir_access,
-                           &cfg.option.n_dir_access, cfg.daccess.length,
-                           &cfg.error) == false) {
-      goto xrn_parse_option_error;
-    }
-  }
-
   xr_string_copy(&cfg.entry.root, &xr_path_slash);
   for (int i = 0; i < 3; ++i) {
     cfg.entry.stdio[i] = i;
@@ -421,12 +342,16 @@ int main(int argc, char *argv[]) {
   }
 
   if (xr_tracer_setup(&tracer, &cfg.option) == false) {
-    xrn_print_error(&tracer.error.msg);
+    xr_error_tostring(&tracer.error, &cfg.error);
+    xrn_print_error(&cfg.error);
     retval = 1;
     goto xrn_tracer_failed;
   }
   bool res = xr_tracer_trace(&tracer, &cfg.entry, &result);
-  xrn_print_error(&tracer.error.msg);
+  if (res == false) {
+    xr_error_tostring(&tracer.error, &cfg.error);
+    xrn_print_error(&cfg.error);
+  }
 xrn_tracer_failed:
   xr_tracer_delete(&tracer);
 xrn_parse_option_error:

@@ -12,7 +12,7 @@ struct xr_file_s {
   int fd;
   long flags;
   long write_length, read_length;
-  xr_path_t *path;
+  xr_path_t path;
   xr_list_t files;
 };
 
@@ -34,14 +34,11 @@ struct xr_fs_s {
 };
 
 static inline void xr_file_init(xr_file_t *file) {
-  file->path = _XR_NEW(xr_path_t);
-  xr_string_init(file->path, 1);
+  xr_string_zero(&file->path);
 }
 
 static inline void xr_file_delete(xr_file_t *file) {
-  if (file->path) {
-    xr_path_delete(file->path);
-  }
+  xr_path_delete(&file->path);
 }
 
 /**
@@ -53,17 +50,14 @@ static inline void xr_file_delete(xr_file_t *file) {
  */
 static inline void xr_file_open(xr_file_t *file, int fd, long flags,
                                 xr_path_t *path) {
-  file->path = path;
+  xr_string_swap(&file->path, path);
   file->fd = fd;
   file->flags = flags;
   file->write_length = file->read_length = 0;
 }
 
 static inline void __xr_file_dup(xr_file_t *file, xr_file_t *dfile) {
-  if (dfile->path == NULL) {
-    xr_file_init(dfile);
-  }
-  xr_string_copy(dfile->path, file->path);
+  xr_string_copy(&dfile->path, &file->path);
   dfile->flags = file->flags;
   dfile->write_length = file->write_length;
   dfile->read_length = file->write_length;
@@ -155,6 +149,19 @@ static inline xr_file_t *xr_file_set_select_file(xr_file_set_t *fset, int fd) {
     }
   }
   return NULL;
+}
+
+static inline void xr_file_set_close_file(xr_file_set_t *fset, int fd) {
+  xr_list_t *cur, *tmp;
+  _xr_list_for_each_safe(&fset->data->files, cur, tmp) {
+    xr_file_t *file = xr_list_entry(cur, xr_file_t, files);
+    if (file->fd == fd) {
+      xr_list_del(cur);
+      xr_file_delete(file);
+      free(file);
+      return;
+    }
+  }
 }
 
 /**

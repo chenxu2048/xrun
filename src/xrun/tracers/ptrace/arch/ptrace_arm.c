@@ -12,7 +12,7 @@
 // instruction: 0x0f9 NR(20bit)
 // eabi syscall: swi 0x0
 // instruction: 0x0f900000
-#define XR_ARM_OABI_MASK 0x000fffff
+#define XR_ARM_OABI_MASK 0x00ffffff
 #define XR_ARM_CSPR (XR_ARM_cspr * sizeof(unsigned long int))
 
 static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
@@ -42,7 +42,7 @@ static inline bool xr_ptrace_tracer_peek_syscall_arm(
     if (errno) {
       return false;
     }
-    syscall_info->syscall = inst & XR_ARM_OABI_MASK;
+    syscall_info->syscall = xr_syscall_arm_from_oabi(inst & XR_ARM_OABI_MASK);
   }
   syscall_info->retval = regs.uregs[0];
 

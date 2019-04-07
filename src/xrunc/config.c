@@ -1,3 +1,4 @@
+#include "xrun/option.h"
 #include "xrun/utils/json.h"
 #include "xrun/utils/string.h"
 
@@ -13,76 +14,91 @@
     }                                          \
   } while (0)
 
-bool xrn_config_parse_limit(xr_json_t *entry, size_t index, const char *name,
-                            xr_file_limit_t *limit, xr_string_t *error) {
-  if (XR_JSON_IS_OBJECT(entry) == false) {
-    xr_string_format(error, "config.%s[%d] is not a object.", name, index);
+bool xrn_config_access_validate(xr_json_t *access, const char *json_path,
+                                xr_string_t *error) {
+  if (XR_JSON_IS_OBJECT(access) == false) {
+    xr_string_format(error, "%s is not a object.", json_path);
     return false;
   }
-  if (_XR_JSON_OBJECT(entry)->len != 2 || _XR_JSON_OBJECT(entry)->len != 3) {
-    xr_string_format(error, "config.%s[%d] has invalid key.", name, index);
+  if (_XR_JSON_OBJECT(access)->len != 2 && _XR_JSON_OBJECT(access)->len != 3) {
+    xr_string_format(error, "%s has invalid key.", json_path);
+    return false;
   }
+  return true;
+}
+
+bool xrn_config_parse_access(xr_json_t *entry, const char *json_path,
+                             xr_access_list_t *alist, xr_string_t *error) {
+  if (xrn_config_access_validate(entry, json_path, error) == false) {
+    return false;
+  }
+  char *path = NULL;
+  long flags = 0;
+  xr_access_mode_t mode = XR_ACCESS_MODE_FLAG_MATCH;
   for (int i = 0; i < _XR_JSON_OBJECT(entry)->len; ++i) {
     const char *key = entry->u.object.keys[i];
     xr_json_t *value = entry->u.object.values[i];
     if (strcmp("path", key) == 0) {
       if (!XR_JSON_IS_STRING(value)) {
-        xr_string_format(error, "config.%s[%d].path is not a string.", name,
-                         index);
+        xr_string_format(error, "%s.path is not a string.", json_path);
         return false;
       }
-      xr_string_concat_raw(&limit->path, _XR_JSON_STRING(value),
-                           strlen(_XR_JSON_STRING(value)));
+      path = _XR_JSON_STRING(value);
     } else if (strcmp("flags", key) == 0) {
       if (XR_JSON_IS_STRING(value)) {
-        if (xrn_file_limit_read_flags(_XR_JSON_STRING(value), limit) == false) {
-          xr_string_format(error, "config.%s[%d].flags(%s) is invalid.",
+        if (xrn_file_limit_read_flags(_XR_JSON_STRING(value), &flags) ==
+            false) {
+          xr_string_format(error, "%s.flags(%s) is invalid.", json_path,
                            _XR_JSON_STRING(value));
           return false;
         }
       } else if (XR_JSON_IS_INTEGER(value)) {
-        limit->flags = XR_JSON_INTEGER(value);
+        flags = XR_JSON_INTEGER(value);
       } else {
-        xr_string_format(error,
-                         "config.%s[%d].flags is not a string or integer.",
-                         name, index);
+        xr_string_format(error, "%s.flags is not a string or integer.",
+                         json_path);
         return false;
       }
     } else if (strcmp("contains", key) == 0) {
       if (!XR_JSON_IS_TRUE(value) && !XR_JSON_IS_FALSE(value)) {
-        xr_string_format(error, "config.%s[%d].contains is not a boolean.",
-                         name, index);
+        xr_string_format(error, "%s.contains is not a boolean.", json_path);
         return false;
       }
-      limit->mode =
-        XR_JSON_IS_TRUE(value) ? XR_FILE_ACCESS_CONTAIN : XR_FILE_ACCESS_MATCH;
+      mode = XR_JSON_IS_TRUE(value) ? XR_ACCESS_MODE_FLAG_CONTAINS
+                                    : XR_ACCESS_MODE_FLAG_MATCH;
     } else {
-      xr_string_format(error, "config.%s[%d].%s is not a valid field.", name,
-                       index, key);
+      xr_string_format(error, "%s.%s is not a valid field.", json_path, key);
       return false;
     }
   }
+  if (path == NULL) {
+    xr_string_format(error, "%s.path is required.", json_path);
+    return false;
+  }
+  xr_access_list_append(alist, path, strlen(path), flags, mode);
   return true;
 }
 
-bool xrn_config_parse_limits(xr_json_t *entries, const char *name,
-                             xr_file_limit_t **limit, size_t *n,
-                             xr_string_t *error) {
+bool xrn_config_parse_access_list(xr_json_t *entries, const char *json_path,
+                                  xr_access_list_t *alist, xr_string_t *error) {
   if (!XR_JSON_IS_ARRAY(entries)) {
-    xr_string_format(error, "config.%s is not an array.", name);
+    xr_string_format(error, "config.%s is not an array.", json_path);
     return false;
   }
-  size_t len = entries->u.array.len;
-  xr_file_limit_t *limits = malloc(sizeof(xr_file_limit_t) * len);
-  *n = len;
-  *limit = limits;
-  memset(limits, 0, sizeof(xr_file_limit_t) * len);
+
+  size_t len = _XR_JSON_ARRAY(entries)->len;
+  xr_string_t access_path;
+  xr_string_zero(&access_path);
   for (int i = 0; i < len; ++i) {
     xr_json_t *entry = XR_JSON_ARRAY(entries)->values[i];
-    if (xrn_config_parse_limit(entry, i, name, limits + i, error) == false) {
+    xr_string_format(&access_path, "%s[%d]", json_path, i);
+    if (xrn_config_parse_access(entry, access_path.string, alist, error) ==
+        false) {
+      xr_string_delete(&access_path);
       return false;
     }
   }
+  xr_string_delete(&access_path);
   return true;
 }
 
@@ -131,23 +147,23 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
 
   xr_json_t *files = xr_json_get(cfg_json, "s", "files");
   if (files) {
-    if (xrn_config_parse_limits(files, "files", &option->file_access,
-                                &option->n_file_access, error) == false) {
+    if (xrn_config_parse_access_list(files, "files", &option->files, error) ==
+        false) {
       return __xrn_parse_failed(cfg_json);
     }
   }
 
   xr_json_t *directories = xr_json_get(cfg_json, "s", "directories");
   if (directories) {
-    if (xrn_config_parse_limits(directories, "directories", &option->dir_access,
-                                &option->n_dir_access, error) == false) {
+    if (xrn_config_parse_access_list(directories, "directories",
+                                     &option->directories, error) == false) {
       return __xrn_parse_failed(cfg_json);
     }
   }
 
   xr_json_t *calls = xr_json_get(cfg_json, "s", "calls");
   if (calls) {
-    if (xrn_config_parse_calls(calls, option->call_access, error) == false) {
+    if (xrn_config_parse_calls(calls, option->calls, error) == false) {
       return __xrn_parse_failed(cfg_json);
     }
   }

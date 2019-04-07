@@ -9,6 +9,7 @@ typedef struct xr_checker_s xr_checker_t;
 typedef struct xr_tracer_s xr_tracer_t;
 typedef struct xr_tracer_result_s xr_tracer_result_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
+typedef struct xr_option_s xr_option_t;
 
 enum xr_checker_id_e {
   XR_CHECKER_FILE,

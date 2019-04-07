@@ -21,6 +21,8 @@ static inline void xr_string_zero(xr_string_t *str) {
   str->string = NULL;
 }
 
+#define _XR_STRING_DEFAULT_CAPACITY 64
+
 /**
  * Init a string
  *
@@ -39,8 +41,10 @@ static inline void xr_string_init(xr_string_t *str, int capacity) {
  * @@str
  */
 static inline void xr_string_delete(xr_string_t *str) {
-  str->length = 0;
-  free(str->string);
+  if (str->string != NULL) {
+    free(str->string);
+  }
+  memset(str, 0, sizeof(xr_string_t));
 }
 
 /**
@@ -108,36 +112,39 @@ static inline bool xr_string_start_with(xr_string_t *str, xr_string_t *head) {
   return strncmp(str->string, head->string, str->length) == 0;
 }
 
+static inline bool xr_string_end_with(xr_string_t *str, xr_string_t *tail) {
+  return str->length >= tail->length &&
+         strncmp(str->string + str->length - tail->length, tail->string,
+                 tail->length) == 0;
+}
+
 static inline bool xr_string_equal(xr_string_t *lhs, xr_string_t *rhs) {
   return lhs->length == rhs->length &&
          strncmp(lhs->string, rhs->string, lhs->length) == 0;
 }
 
-static inline bool xr_string_vformat(xr_string_t *str, const char *format,
+static inline void xr_string_vformat(xr_string_t *str, const char *format,
                                      va_list args) {
   if (str->string == NULL) {
     xr_string_init(str, 64);
   }
+  va_list retry;
+  va_copy(retry, args);
   int wrote = vsnprintf(str->string, str->capacity - 1, format, args);
   if (wrote >= str->capacity) {
     xr_string_grow(str, wrote + 1);
-    return false;
+    vsnprintf(str->string, str->capacity - 1, format, retry);
   }
   str->length = wrote;
   str->string[str->length] = 0;
-  return true;
+  va_end(retry);
 }
 
 static inline void xr_string_format(xr_string_t *str, const char *format, ...) {
   va_list args;
   va_start(args, format);
-  bool formatted = xr_string_vformat(str, format, args);
+  xr_string_vformat(str, format, args);
   va_end(args);
-  if (formatted == false) {
-    va_start(args, format);
-    formatted = xr_string_vformat(str, format, args);
-    va_end(args);
-  }
 }
 
 static inline void xr_string_swap(xr_string_t *lhs, xr_string_t *rhs) {

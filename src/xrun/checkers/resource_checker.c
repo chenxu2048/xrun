@@ -3,6 +3,7 @@
 #include "xrun/calls.h"
 #include "xrun/checkers/resource_checker.h"
 #include "xrun/option.h"
+#include "xrun/process.h"
 #include "xrun/tracer.h"
 
 void xr_resource_checker_init(xr_checker_t *checker) {

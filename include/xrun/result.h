@@ -44,7 +44,10 @@ struct xr_tracer_result_s {
   xr_tracer_process_result_t *eprocess;
   union {
     int ecall;
-    xr_path_t epath;
+    struct {
+      xr_path_t epath;
+      long eflags;
+    };
   };
   int epid, etid;
 };

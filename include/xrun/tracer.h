@@ -4,9 +4,8 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#include "xrun/checker.h"
-#include "xrun/process.h"
 #include "xrun/result.h"
+#include "xrun/utils/error.h"
 #include "xrun/utils/list.h"
 #include "xrun/utils/time.h"
 
@@ -16,6 +15,10 @@ typedef struct xr_option_s xr_option_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
 typedef struct xr_error_s xr_error_t;
 typedef struct xr_entry_s xr_entry_t;
+typedef struct xr_process_s xr_process_t;
+typedef struct xr_thread_s xr_thread_t;
+typedef struct xr_checker_s xr_checker_t;
+typedef enum xr_checker_id_e xr_checker_id_t;
 
 typedef bool xr_tracer_op_spawn_f(xr_tracer_t *tracer, xr_entry_t *entry);
 
@@ -40,11 +43,6 @@ struct xr_trace_trap_syscall_s {
 
   long args[7];
   long retval;
-};
-
-struct xr_error_s {
-  int eno;
-  xr_string_t msg;
 };
 
 struct xr_trace_trap_s {
@@ -93,9 +91,10 @@ struct xr_tracer_s {
 static inline void xr_tracer_init(xr_tracer_t *tracer, const char *name) {
   memset(tracer, 0, sizeof(xr_tracer_t));
   tracer->name = name;
+  xr_error_init(&tracer->error);
   xr_list_init(&tracer->checkers);
   xr_list_init(&tracer->processes);
-  xr_string_zero(&tracer->error.msg);
+  xr_error_init(&tracer->error);
 }
 
 bool xr_tracer_add_checker(xr_tracer_t *tracer, xr_checker_id_t cid);

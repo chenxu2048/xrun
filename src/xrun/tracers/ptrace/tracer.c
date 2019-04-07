@@ -14,6 +14,7 @@
 #include "xrun/calls.h"
 #include "xrun/entry.h"
 #include "xrun/option.h"
+#include "xrun/process.h"
 #include "xrun/tracer.h"
 #include "xrun/tracers/ptrace/tracer.h"
 #include "xrun/utils/utils.h"
@@ -104,7 +105,6 @@ static xr_thread_t *create_spawned_process(xr_tracer_t *tracer, pid_t child) {
 #define __XR_PTRACE_TRACER_PIPE_ERR 256
 
 struct __xr_ptrace_tracer_pipe_info {
-  int eno;
   char msg[__XR_PTRACE_TRACER_PIPE_ERR];
 };
 
@@ -135,11 +135,11 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
 
     // exec failed. die here
     // send tracer->error into pipe
-    struct __xr_ptrace_tracer_pipe_info error = {
-      .eno = tracer->error.eno,
-    };
-    strncpy(error.msg, tracer->error.msg.string, __XR_PTRACE_TRACER_PIPE_ERR);
-    write(error_pipe[1], &error, sizeof(error));
+    xr_string_t estr;
+    xr_string_zero(&estr);
+    xr_error_tostring(&tracer->error, &estr);
+    write(error_pipe[1], &estr.length, sizeof(estr.length));
+    write(error_pipe[1], estr.string, sizeof(char) * estr.length);
     _exit(1);
   }
 
@@ -147,8 +147,19 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
   int child = waitpid(fork_ret, &status, 0);
 
   // try to read error info
-  struct __xr_ptrace_tracer_pipe_info error = {};
-  read(error_pipe[0], &error, sizeof(error));
+  xr_string_t estr;
+  size_t estr_len;
+  read(error_pipe[0], &estr_len, sizeof(estr_len));
+  if (errno == 0) {
+    // read rest
+    xr_string_init(&estr, estr_len + 1);
+    read(error_pipe[1], estr.string, sizeof(char) * estr_len);
+    estr.string[estr_len] = 0;
+    // clear errno
+    errno = 0;
+    xr_tracer_error(tracer, estr.string);
+    xr_string_delete(&estr);
+  }
   // close all pipe
   xr_close_pipe(error_pipe);
 
@@ -158,8 +169,6 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
 
   // error occurred.
   if (WIFEXITED(status)) {
-    xr_string_concat_raw(&tracer->error.msg, error.msg,
-                         __XR_PTRACE_TRACER_PIPE_ERR);
     return _XR_TRACER_ERROR(tracer, "waiting first child %d failed.", fork_ret);
   }
 

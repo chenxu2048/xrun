@@ -12,21 +12,22 @@
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
                      xr_tracer_result_t *result) {
   if (tracer->spwan(tracer, entry) == false) {
-    return _XR_TRACER_ERROR(tracer, "tracer spwan error.");
-  }
-  xr_trace_trap_t trap = {.trap = XR_TRACE_TRAP_NONE};
-  while (true) {
-    if (tracer->trap(tracer, &trap) == false) {
-      return false;
-    }
+    _XR_TRACER_ERROR(tracer, "tracer spwan error.");
+  } else {
+    xr_trace_trap_t trap = {.trap = XR_TRACE_TRAP_NONE};
+    while (true) {
+      if (tracer->trap(tracer, &trap) == false) {
+        return false;
+      }
 
-    if (xr_tracer_check(tracer, result, &trap) == false) {
-      break;
-    }
+      if (xr_tracer_check(tracer, result, &trap) == false) {
+        break;
+      }
 
-    if (tracer->step(tracer, &trap) == false) {
-      _XR_TRACER_ERROR(tracer, "tracer step failed.");
-      break;
+      if (tracer->step(tracer, &trap) == false) {
+        _XR_TRACER_ERROR(tracer, "tracer step failed.");
+        break;
+      }
     }
   }
   xr_tracer_clean(tracer);
@@ -38,7 +39,7 @@ bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option) {
   xr_checker_t *checker;
   _xr_list_for_each_entry(&(tracer->checkers), checker, xr_checker_t,
                           checkers) {
-    if (checker->setup(checker, tracer) == false) {
+    if (checker->setup(checker, tracer->option) == false) {
       return _XR_TRACER_ERROR(tracer, "checker with id %d setup failed",
                               checker->checker_id);
     }
@@ -89,28 +90,13 @@ void xr_tracer_delete(xr_tracer_t *tracer) {
 }
 
 bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...) {
-  xr_error_t *error = &tracer->error;
-  if (errno) {
-    error->eno = errno;
-    char *errstr = strerror(errno);
-    xr_string_concat_raw(&error->msg, errstr, strlen(errstr));
-    xr_string_concat_raw(&error->msg, " -- ", 4);
-  }
-  xr_string_t emsg;
   va_list args;
-  xr_string_init(&emsg, strlen(msg) * 2);
   va_start(args, msg);
-  bool formatted = xr_string_vformat(&emsg, msg, args);
-  va_end(args);
-
-  if (formatted == false) {
-    // retry
-    va_start(args, msg);
-    formatted = xr_string_vformat(&emsg, msg, args);
-    va_end(args);
+  if (errno == 0) {
+    xr_error_verror(&tracer->error, msg, args);
+  } else {
+    xr_error_vnerror(&tracer->error, errno, msg, args);
   }
-  xr_string_concat(&error->msg, &emsg);
-  xr_string_delete(&emsg);
   return false;
 }
 

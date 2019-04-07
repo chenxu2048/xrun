@@ -1,6 +1,7 @@
 #include "xrun/checkers/syscall_checker.h"
 #include "xrun/calls.h"
 #include "xrun/option.h"
+#include "xrun/process.h"
 #include "xrun/tracer.h"
 
 bool xr_syscall_checker_setup(xr_checker_t *checker, xr_option_t *option) {
@@ -15,7 +16,7 @@ bool xr_syscall_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   }
 
   if (XR_SYSCALL_MAX < trap->syscall_info.syscall) {
-    return tracer->option->call_access[trap->syscall_info.syscall];
+    return tracer->option->calls[trap->syscall_info.syscall];
   }
   return false;
 }

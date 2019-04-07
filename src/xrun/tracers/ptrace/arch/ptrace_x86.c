@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "xrun/calls.h"
+#include "xrun/process.h"
 #include "xrun/tracer.h"
 #include "xrun/tracers/ptrace/elf.h"
 #include "xrun/tracers/ptrace/tracer.h"
@@ -62,11 +63,12 @@ static inline bool xr_ptrace_tracer_peek_syscall_x86(
   syscall_info->retval = regs.rax;
 
   switch (compat) {
-    case XR_COMPAT_SYSCALL_INVALID:
+      // fallback to x64
+    case XR_COMPAT_SYSCALL_X86_X32:
+      syscall_info->syscall = xr_syscall_x64_from_x32(syscall_info->syscall);
+      // x32 is similar to x64, with some difference at call number.
       // fallback to x64
     case XR_COMPAT_SYSCALL_X86_64:
-    case XR_COMPAT_SYSCALL_X86_X32:
-      // x32 is similar to x64, with some difference at call number.
       syscall_info->args[0] = regs.rdi;
       syscall_info->args[1] = regs.rsi;
       syscall_info->args[2] = regs.rdx;
@@ -77,12 +79,17 @@ static inline bool xr_ptrace_tracer_peek_syscall_x86(
     case XR_COMPAT_SYSCALL_X86_IA32:
       // if tracer is in 64bit and tracee is in ia32-compat-mode, the kernel
       // space of tracee is in 64 bits, but pass args via i386 syscall abi.
+      syscall_info->syscall = xr_syscall_x64_from_x86(syscall_info->syscall);
       syscall_info->args[0] = regs.rbx;
       syscall_info->args[1] = regs.rcx;
       syscall_info->args[2] = regs.rdx;
       syscall_info->args[3] = regs.rsi;
       syscall_info->args[4] = regs.rdi;
       syscall_info->args[5] = regs.rbp;
+      if (syscall_info->retval & 0x80000000) {
+        // do signed patch
+        syscall_info->retval |= 0xffffffff00000000;
+      }
       break;
     default:
       return false;

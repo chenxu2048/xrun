@@ -8,7 +8,7 @@
 #include "xrunc/file_limit.h"
 
 struct xrn_file_flag {
-  int flag;
+  long flag;
   const char *name;
   size_t len;
 };
@@ -73,55 +73,50 @@ static const struct xrn_file_flag xrn_file_flags[] = {
 #endif
 };
 
-int xrn_file_limit_flag_name(char *flag, size_t len) {
-  for (int i = 0; i < sizeof(xrn_file_flags) / sizeof(struct xrn_file_flag);
-       ++i) {
+const static size_t xrn_file_flag_num =
+  sizeof(xrn_file_flags) / sizeof(struct xrn_file_flag);
+
+bool xrn_file_limit_flag_name(char *name, size_t len, long *flag) {
+  for (int i = 0; i < xrn_file_flag_num; ++i) {
     if (xrn_file_flags[i].len == len &&
-        strncmp(xrn_file_flags[i].name, flag, len) == 0) {
-      return xrn_file_flags[i].flag;
+        strncmp(xrn_file_flags[i].name, name, len) == 0) {
+      *flag = xrn_file_flags[i].flag;
+      return true;
     }
   }
-  return -1;
+  return false;
 }
 
-bool xrn_file_limit_read_flags(char *flags, xr_file_limit_t *flimit) {
-  int flags_ = 0;
+bool xrn_file_limit_read_flags(char *names, long *flags) {
   int nflag = 0;
-  char *end = flags;
-  if (isdigit(*flags)) {
-    flags_ = strtol(flags, &end, 10);
-    if (*end != '\0') {
-      return false;
-    }
-  } else {
-    char *start = flags;
-    while (true) {
-      if (*end == '+' || *end == '\0') {
-        int flag = xrn_file_limit_flag_name(start, end - start);
-        if (flag == -1) {
-          return false;
-        } else {
-          flags_ |= flag;
-          nflag++;
-        }
-        start = end + 1;
-      }
-      if (*end == '\0') {
-        break;
-      }
-      end++;
-    }
+  char *end = names;
+  if (isdigit(*names)) {
+    *flags = strtol(names, &end, 10);
+    return *end == '\0';
   }
-  if (nflag == 0) {
-    return false;
+  long flag = 0;
+  char *start = names;
+  while (true) {
+    if (*end == '+' || *end == '\0') {
+      if (xrn_file_limit_flag_name(start, end - start, &flag)) {
+        *flags |= flag;
+        nflag++;
+      } else {
+        return false;
+      }
+      start = end + 1;
+    }
+    if (*end == '\0') {
+      break;
+    }
+    end++;
   }
-  flimit->flags = flags_;
-  return true;
+  return nflag != 0;
 }
 
-bool xrn_file_limit_read(char *path, xr_file_limit_t *flimit) {
+bool xrn_file_access_read(xr_access_list_t *alist, char *path) {
   char *flag = path;
-  enum xr_file_access_mode mode = XR_FILE_ACCESS_MATCH;
+  xr_access_mode_t mode = XR_ACCESS_MODE_FLAG_MATCH;
   while (*flag != '\0') {
     if (*flag == ':' && flag != path && *(flag - 1) != '\\') {
       break;
@@ -132,27 +127,17 @@ bool xrn_file_limit_read(char *path, xr_file_limit_t *flimit) {
   if (*flag == '\0') {
     return false;
   }
+  size_t path_len = flag - path;
+
   flag++;
   if (*flag == '-') {
-    mode = XR_FILE_ACCESS_CONTAIN;
+    mode = XR_ACCESS_MODE_FLAG_CONTAINS;
     flag++;
   }
-  if (xrn_file_limit_read_flags(flag, flimit) == false) {
+  long flags = 0;
+  if (xrn_file_limit_read_flags(flag, &flags) == false) {
     return false;
   }
-  xr_string_init(&(flimit->path), flag - path);
-  xr_string_concat_raw(&(flimit->path), path, flag - path - 1);
-  flimit->mode = mode;
-  return true;
-}
-
-bool xrn_file_limit_read_all(char **pathes, size_t size,
-                             xr_file_limit_t *flimit, xr_string_t *error) {
-  for (int i = 0; i < size; ++i) {
-    if (xrn_file_limit_read(pathes[i], flimit + i) == false) {
-      xr_string_format(error, "Invalid path definition %s.", pathes[i]);
-      return false;
-    }
-  }
+  xr_access_list_append(alist, path, path_len, flags, mode);
   return true;
 }

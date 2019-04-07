@@ -15,8 +15,8 @@ grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
   echo "#define XR_SYSCALL_MAX ${CALL_ENTRIES}"
   echo "extern const char *xr_syscall_table_arm[XR_SYSCALL_MAX];"
   echo
-  echo "#define xr_syscall_arm_to_oabi(nr) (nr + 0x900000)"
-  echo "#define xr_syscall_arm_from_oabi(nr) (nr - 0x900000)"
+  echo "#define xr_syscall_arm_to_oabi(nr) ((nr) + 0x900000)"
+  echo "#define xr_syscall_arm_from_oabi(nr) ((nr) - 0x900000)"
   echo
   echo "/* marco define region begin */"
   while read nr abi name entry compat; do

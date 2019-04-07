@@ -12,16 +12,18 @@ CALLS=$(ARM_CALLS) $(X86_CALLS)
 
 UTILS=utils/json.c utils/list.c
 
+LIBSOURCE=process.c tracer.c entry.c option.c
+
 xrunlibdir = $(libdir)
 xrunlib_PROGRAMS = libxrun.so
-libxrun_so_SOURCES = process.c tracer.c entry.c \
+libxrun_so_SOURCES = $(LIBSOURCE) \
    $(UTILS) \
    $(CALLS) \
    $(CHECKERS) \
    $(TRACERS)
 
 xrunlib_LIBRARIES = libxrun.a
-libxrun_a_SOURCES = process.c tracer.c entry.c \
+libxrun_a_SOURCES = $(LIBSOURCE) \
    $(UTILS) \
    $(CALLS) \
    $(CHECKERS) \

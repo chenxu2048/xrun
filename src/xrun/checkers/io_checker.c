@@ -2,6 +2,7 @@
 #include "xrun/calls.h"
 #include "xrun/files.h"
 #include "xrun/option.h"
+#include "xrun/process.h"
 #include "xrun/tracer.h"
 
 struct __xr_io_checker_private_s {

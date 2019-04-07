@@ -6,6 +6,7 @@
 #include "xrun/calls.h"
 #include "xrun/checkers/fork_checker.h"
 #include "xrun/option.h"
+#include "xrun/process.h"
 #include "xrun/tracer.h"
 
 #ifndef XR_SYSCALL_VFORK
