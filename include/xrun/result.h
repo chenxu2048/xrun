@@ -20,6 +20,8 @@ enum xr_tracer_code_e {
   XR_RESULT_FDOUT,
   // thread or process out
   XR_RESULT_TASKOUT,
+  // clone with malicious flags
+  XR_RESULT_CLONEDENY,
   // syscall deny
   XR_RESULT_CALLDENY,
   // path deny

@@ -25,7 +25,7 @@ bool xr_resource_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   if (trap->trap == XR_TRACE_TRAP_SIGNAL) {
     switch (trap->stop_signal) {
       case SIGSEGV:
-        if (trap->process->memory > process_limit->memory) {
+        if (trap->thread->process->memory > process_limit->memory) {
           return false;
         }
         break;

@@ -109,6 +109,22 @@ static inline bool __do_process_open_file(xr_checker_t *checker,
   return __do_file_access_check(checker, &file->path, file->flags);
 }
 
+#ifndef CLONE_FILES
+#define CLONE_FILES 0
+#endif
+#ifndef CLONE_FS
+#define CLONE_FS 0
+#endif
+
+static inline void __do_process_unshare(xr_thread_t *thread, int flag) {
+  if (flag & CLONE_FILES) {
+    xr_file_set_own(&thread->fset);
+  }
+  if (flag & CLONE_FS) {
+    xr_fs_own(&thread->fs);
+  }
+}
+
 #define XR_CREATE_FLAGS (O_CREAT | O_WRONLY | O_TRUNC)
 
 #ifndef XR_SYSCALL_OPEN
@@ -174,6 +190,9 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
       case XR_SYSCALL_CLOSE:
         __do_process_close_file(thread, retval);
         return true;
+      case XR_SYSCALL_UNSHARE:
+        __do_process_unshare(thread, call_args[0]);
+        return true;
       default:
         break;
     }
@@ -222,7 +241,7 @@ void xr_file_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
   }
   result->status = XR_RESULT_PATHDENY;
   result->etid = trap->thread->tid;
-  result->epid = trap->process->pid;
+  result->epid = trap->thread->process->pid;
 
   xr_file_checker_data_t *data = xr_file_checker_data(checker);
   xr_string_copy(&result->epath, data->epath);

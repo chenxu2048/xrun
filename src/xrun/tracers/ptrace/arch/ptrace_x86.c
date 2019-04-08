@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ptrace.h>
+#include <sys/reg.h>
 #include <sys/user.h>
 #include <unistd.h>
 
@@ -23,7 +24,9 @@
 #define XR_X86_SIGNED_32_BIT 0x80000000
 #define XR_X86_SIGNED_32_BIT_EXTEND 0xffffffff00000000
 
-static inline int xr_ptrace_tracer_syscall_compat_x86(int pid) {
+#ifdef XR_ARCH_X86_64
+
+int xr_ptrace_tracer_syscall_compat(int pid) {
   long rip = ptrace(PTRACE_PEEKUSER, pid, XR_X64_PC_OFFSET, NULL);
   if (errno) {
     return XR_COMPAT_SYSCALL_INVALID;
@@ -49,19 +52,26 @@ static inline int xr_ptrace_tracer_syscall_compat_x86(int pid) {
     return XR_COMPAT_SYSCALL_X86_IA32;
   } else if (low == XR_X86_SYSCALL_INST_LOW &&
              high == XR_X86_SYSCALL_INST_HIGH) {
-    return XR_COMPAT_SYSCALL_X86_64;
+    long syscall = ptrace(PTRACE_PEEKUSER, pid, RAX, 0);
+    if (errno) {
+      return XR_COMPAT_SYSCALL_INVALID;
+    } else if (syscall & XR_X32_MASK_BIT_SYSCALL) {
+      return XR_COMPAT_SYSCALL_X86_X32;
+    } else {
+      return XR_COMPAT_SYSCALL_X86_64;
+    }
   } else {
     return XR_COMPAT_SYSCALL_INVALID;
   }
 }
 
-static inline bool xr_ptrace_tracer_peek_syscall_x86(
-  int pid, xr_trace_trap_syscall_t *syscall_info, int compat) {
+bool xr_ptrace_tracer_peek_syscall(int pid,
+                                   xr_trace_trap_syscall_t *syscall_info,
+                                   int compat) {
   struct user_regs_struct regs;
   if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
     return false;
   }
-#ifdef XR_ARCH_X86_64
   syscall_info->syscall = regs.orig_rax;
   syscall_info->retval = regs.rax;
 
@@ -97,21 +107,21 @@ static inline bool xr_ptrace_tracer_peek_syscall_x86(
     default:
       return false;
   }
-
-#else
-  syscall_info->syscall = regs.orig_eax;
-  syscall_info->retval = regs.eax;
-  syscall_info->args[0] = regs.ebx;
-  syscall_info->args[1] = regs.ecx;
-  syscall_info->args[2] = regs.edx;
-  syscall_info->args[3] = regs.esi;
-  syscall_info->args[4] = regs.edi;
-  syscall_info->args[5] = regs.ebp;
-#endif
   return true;
 }
 
-int xr_ptrace_tracer_elf_compat_x86(xr_path_t *elf) {
+bool xr_ptrace_tracer_poke_syscall(int pid, long arg, int index, int compat) {
+  static const long arg_index[] = {RDI, RSI, RDX, R10, R8, R9};
+  static const long arg_index_32[] = {RBX, RCX, RDX, RSI, RDI, RBP};
+  if (index > 5 || index < 0) {
+    return false;
+  }
+  long offset = compat == XR_COMPAT_SYSCALL_X86_IA32 ? arg_index_32[index]
+                                                     : arg_index[index];
+  return ptrace(PTRACE_POKEUSER, pid, offset * 8, 0) != -1;
+}
+
+int xr_ptrace_tracer_elf_compat(xr_path_t *elf) {
   e_ident_t eident;
   int elffd = open(elf->string, O_RDONLY);
   if (elffd == -1) {
@@ -130,27 +140,42 @@ int xr_ptrace_tracer_elf_compat_x86(xr_path_t *elf) {
                                          : XR_COMPAT_SYSCALL_X86_IA32;
 }
 
+#else /* XR_ARCH_X86_64 */
+
+int xr_ptrace_tracer_syscall_compat(int pid) {
+  return XR_COMPAT_SYSCALL_X86_IA32;
+}
+
 bool xr_ptrace_tracer_peek_syscall(int pid,
                                    xr_trace_trap_syscall_t *syscall_info,
                                    int compat) {
-  return xr_ptrace_tracer_peek_syscall_x86(pid, syscall_info, compat);
-}
-
-int xr_ptrace_tracer_syscall_compat(int pid) {
-#ifdef XR_ARCH_X86_64
-  return xr_ptrace_tracer_syscall_compat_x86(pid);
-#else
-  // compat mode is ignored.
-  return XR_COMPAT_SYSCALL_X86_IA32;
-#endif
+  struct user_regs_struct regs;
+  if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
+    return false;
+  }
+  syscall_info->syscall = regs.orig_eax;
+  syscall_info->retval = regs.eax;
+  syscall_info->args[0] = regs.ebx;
+  syscall_info->args[1] = regs.ecx;
+  syscall_info->args[2] = regs.edx;
+  syscall_info->args[3] = regs.esi;
+  syscall_info->args[4] = regs.edi;
+  syscall_info->args[5] = regs.ebp;
+  return true;
 }
 
 int xr_ptrace_tracer_elf_compat(xr_path_t *elf) {
-#ifdef XR_ARCH_X86_64
-  return xr_ptrace_tracer_elf_compat_x86(elf);
-#else
   return XR_COMPAT_SYSCALL_X86_IA32;
-#endif
 }
+
+bool xr_ptrace_tracer_poke_syscall(int pid, long arg, int index, int compat) {
+  static const long arg_index[] = {RBX, RCX, RDX, RSI, RDI, RBP};
+  if (index > 5 || index < 0) {
+    return false;
+  }
+  return ptrace(PTRACE_POKEUSER, pid, arg_index[index] * 4, 0) != -1;
+}
+
+#endif /* XR_ARCH_X86_64 */
 
 #endif

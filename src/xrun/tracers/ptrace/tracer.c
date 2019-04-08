@@ -25,9 +25,49 @@
 extern bool xr_ptrace_tracer_peek_syscall(int pid,
                                           xr_trace_trap_syscall_t *syscall_info,
                                           int compat);
+
+extern bool xr_ptrace_tracer_poke_syscall(int pid, long args, int index,
+                                          int compat);
+
 extern int xr_ptrace_tracer_syscall_compat(int pid);
 
 extern int xr_ptrace_tracer_elf_compat(xr_path_t *elf);
+
+#define XR_TRACER_PTRACE_PENDING_CLONE_DEFAULT 4
+
+struct xr_tracer_ptrace_pending_clone_s;
+typedef struct xr_tracer_ptrace_pending_clone_s
+  xr_tracer_ptrace_pending_clone_t;
+struct xr_tracer_ptrace_pending_clone_s {
+  pid_t caller;
+  int hit;
+  long hack_val;
+  xr_tracer_ptrace_pending_clone_t *next;
+};
+
+struct xr_tracer_ptrace_data_s;
+typedef struct xr_tracer_ptrace_data_s xr_tracer_ptrace_data_t;
+struct xr_tracer_ptrace_data_s {
+  xr_tracer_ptrace_pending_clone_t *pending;
+};
+
+static inline xr_tracer_ptrace_data_t *xr_tracer_ptrace_data(
+  xr_tracer_t *tracer) {
+  return (xr_tracer_ptrace_data_t *)tracer->tracer_data;
+}
+
+void xr_tracer_ptrace_init(xr_tracer_t *tracer, const char *name) {
+  xr_tracer_init(tracer, name);
+  tracer->spwan = xr_ptrace_tracer_spawn;
+  tracer->step = xr_ptrace_tracer_step;
+  tracer->trap = xr_ptrace_tracer_trap;
+  tracer->get = xr_ptrace_tracer_get;
+  tracer->set = xr_ptrace_tracer_set;
+  tracer->strcpy = xr_ptrace_tracer_strcpy;
+  tracer->kill = xr_ptrace_tracer_kill;
+  tracer->tracer_data = _XR_NEW(xr_tracer_ptrace_data_t);
+  memset(tracer->tracer_data, 0, sizeof(xr_tracer_ptrace_data_t));
+}
 
 // we try to set close on exec for any other file description
 static inline void xr_ptrace_try_cloexec() {
@@ -74,8 +114,9 @@ static inline bool do_rlimit_setup(xr_option_t *option) {
 }
 
 static bool get_resource_info(xr_trace_trap_t *trap, struct rusage *ru) {
-  trap->process->time = xr_time_from_timeval(ru->ru_stime, ru->ru_utime);
-  trap->process->memory = ru->ru_maxrss;
+  trap->thread->process->time =
+    xr_time_from_timeval(ru->ru_stime, ru->ru_utime);
+  trap->thread->process->memory = ru->ru_maxrss;
   return true;
 }
 
@@ -194,6 +235,82 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
   return true;
 }
 
+// we expire execve and execveat
+// using stub marco to prevent populate
+#ifndef XR_SYSCALL_EXECVE
+#define XR_SYSCALL_EXECVE -1
+#endif
+#ifndef XR_SYSCALL_EXECVEAT
+#define XR_SYSCALL_EXECVEAT -1
+#endif
+
+#define XR_CLONE_UNUSED_ARG 5
+#define XR_CLONE2_UNUSED_ARG 1
+
+#ifndef XR_SYSCALL_CLONE
+#define XR_SYSCALL_CLONE -1
+#endif
+#ifndef XR_SYSCALL_FORK
+#define XR_SYSCALL_FORK -1
+#endif
+#ifndef XR_SYSCALL_VFORK
+#define XR_SYSCALL_VFORK -1
+#endif
+
+#define XR_IS_CLONE(syscall)                                        \
+  ((syscall) == XR_SYSCALL_CLONE || (syscall) == XR_SYSCALL_FORK || \
+   (syscall) == XR_SYSCALL_VFORK)
+
+static inline bool xr_ptrace_tracer_cloning(xr_tracer_t *tracer,
+                                            xr_trace_trap_t *trap) {
+  xr_tracer_ptrace_data_t *data = xr_tracer_ptrace_data(tracer);
+  xr_tracer_ptrace_pending_clone_t *pending =
+    _XR_NEW(xr_tracer_ptrace_pending_clone_t);
+  pending->next = data->pending;
+  data->pending = pending;
+  pending->caller = trap->thread->tid;
+  pending->hit = 0;
+  pending->hack_val = trap->syscall_info.args[XR_CLONE_UNUSED_ARG];
+  // hacking here
+  if (xr_ptrace_tracer_poke_syscall(pending->caller, pending->caller,
+                                    XR_CLONE_UNUSED_ARG,
+                                    trap->thread->process->compat)) {
+    return false;
+  }
+  return true;
+}
+
+static inline bool xr_ptrace_tracer_clone_return(xr_tracer_t *tracer,
+                                                 xr_trace_trap_t *trap) {
+  xr_tracer_ptrace_data_t *data = xr_tracer_ptrace_data(tracer);
+  for (xr_tracer_ptrace_pending_clone_t *pending = data->pending, *prev = NULL;
+       pending != NULL; prev = pending, pending = prev->next) {
+    if (pending->caller == trap->syscall_info.args[XR_CLONE_UNUSED_ARG]) {
+      pending->hit++;
+      // recover to trap
+      trap->syscall_info.args[XR_CLONE_UNUSED_ARG] = pending->hack_val;
+      // hit twice or clone failed
+      // pending release
+      bool release = pending->hit == 2 ||
+                     (trap->thread->syscall_status == XR_THREAD_CALLOUT &&
+                      trap->syscall_info.retval < 0);
+      if (release) {
+        if (prev == NULL) {
+          data->pending = pending->next;
+        } else {
+          prev->next = pending->next;
+        }
+        free(pending);
+      }
+      // recover to tracee
+      return xr_ptrace_tracer_poke_syscall(
+        trap->thread->tid, trap->syscall_info.args[XR_CLONE_UNUSED_ARG],
+        XR_CLONE_UNUSED_ARG, trap->thread->process->compat);
+    }
+  }
+  return false;
+}
+
 bool xr_ptrace_tracer_step(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   return ptrace(PTRACE_SYSCALL, trap->thread->tid, NULL, NULL) == 0;
 }
@@ -204,18 +321,21 @@ bool xr_ptrace_tracer_step(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     (thread)->syscall_status ^= 1;           \
   } while (0)
 
-// we expire execve and execveat
-// using stub marco to prevent populate
-#ifndef XR_SYSCALL_EXECVE
-#define XR_SYSCALL_EXECVE__STUB -1
-#else
-#define XR_SYSCALL_EXECVE__STUB XR_SYSCALL_EXECVE
-#endif
-#ifndef XR_SYSCALL_EXECVEAT
-#define XR_SYSCALL_EXECVEAT__STUB -1
-#else
-#define XR_SYSCALL_EXECVEAT__STUB XR_SYSCALL_EXECVEAT
-#endif
+static inline xr_thread_t *xr_tracer_select_thread(xr_tracer_t *tracer,
+                                                   pid_t pid) {
+  // trap stopped thread
+  xr_thread_t *thread;
+  xr_process_t *process;
+  _xr_list_for_each_entry(&(tracer->processes), process, xr_process_t,
+                          processes) {
+    _xr_list_for_each_entry(&(process->threads), thread, xr_thread_t, threads) {
+      if (thread->tid == pid) {
+        return thread;
+      }
+    }
+  }
+  return NULL;
+}
 
 bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   struct rusage ru;
@@ -225,27 +345,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     return _XR_TRACER_ERROR(tracer, "waiting child failed.");
   }
 
-  // trap stopped thread
-  xr_thread_t *thread;
-  xr_process_t *process;
-  trap->process = NULL;
-  _xr_list_for_each_entry(&(tracer->processes), process, xr_process_t,
-                          processes) {
-    _xr_list_for_each_entry(&(process->threads), thread, xr_thread_t, threads) {
-      if (thread->tid == pid) {
-        trap->thread = thread;
-        trap->process = process;
-        break;
-      }
-    }
-    if (trap->process) {
-      break;
-    }
-  }
-
-  if (trap->process == NULL) {
-    return _XR_TRACER_ERROR(tracer, "unhandled process/thread %d found.", pid);
-  }
+  trap->thread = xr_tracer_select_thread(tracer, pid);
 
   if (WIFEXITED(status)) {
     trap->trap = XR_TRACE_TRAP_EXIT;
@@ -255,33 +355,79 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     trap->stop_signal = WSTOPSIG(status);
   } else {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
+    __flip_thread_syscall_status(trap->thread);
 
-    if (trap->process->compat == XR_COMPAT_SYSCALL_INVALID) {
-      trap->process->compat = xr_ptrace_tracer_syscall_compat(pid);
-      if (trap->process->compat == XR_COMPAT_SYSCALL_INVALID) {
+    int compat = XR_COMPAT_SYSCALL_INVALID;
+    if (trap->thread == NULL) {
+      // assume cloning
+      trap->thread = _XR_NEW(xr_thread_t);
+      xr_thread_init(trap->thread);
+      trap->thread->tid = pid;
+      trap->thread->process = NULL;
+      compat = xr_ptrace_tracer_syscall_compat(pid);
+    } else {
+      compat = trap->thread->process->compat;
+    }
+
+    if (compat == XR_COMPAT_SYSCALL_INVALID) {
+      compat = xr_ptrace_tracer_syscall_compat(pid);
+      if (compat == XR_COMPAT_SYSCALL_INVALID) {
         return _XR_TRACER_ERROR(tracer, "dectect system compat mode failed");
       }
     }
 
-    if (xr_ptrace_tracer_peek_syscall(pid, &trap->syscall_info,
-                                      process->compat) == false) {
+    if (xr_ptrace_tracer_peek_syscall(pid, &trap->syscall_info, compat) ==
+        false) {
       return _XR_TRACER_ERROR(
         tracer, "getting system call infomation of process %d failed.",
-        trap->process->pid);
+        trap->thread->process->pid);
     }
 
-    if (trap->syscall_info.syscall == XR_SYSCALL_EXECVE__STUB ||
-        trap->syscall_info.syscall == XR_SYSCALL_EXECVEAT__STUB) {
+    if (trap->syscall_info.syscall == XR_SYSCALL_EXECVE ||
+        trap->syscall_info.syscall == XR_SYSCALL_EXECVEAT) {
       // we will detect syscall compat mode in next syscall
-      trap->process->compat = XR_COMPAT_SYSCALL_INVALID;
+      trap->thread->process->compat = XR_COMPAT_SYSCALL_INVALID;
+    } else if (XR_IS_CLONE(trap->syscall_info.syscall)) {
+      if (trap->thread->syscall_status == XR_THREAD_CALLIN &&
+          xr_ptrace_tracer_cloning(tracer, trap) == false) {
+        // hack on cloning failed
+        return _XR_TRACER_ERROR(tracer,
+                                "could not hack syscall argument while "
+                                "clone/fork/vfork at process/thread %d.",
+                                pid);
+      } else if (trap->thread->syscall_status == XR_THREAD_CALLOUT) {
+        if (trap->syscall_info.retval == 0 && trap->thread->process == NULL) {
+          xr_thread_t *caller = xr_tracer_select_thread(
+            tracer, trap->syscall_info.args[XR_CLONE_UNUSED_ARG]);
+          if (caller == NULL) {
+            return _XR_TRACER_ERROR(tracer,
+                                    "could not retrieve caller thread while "
+                                    "clone/fork/vfork at process/thread %d.",
+                                    pid);
+          } else {
+            trap->thread->process = caller->process;
+          }
+        }
+        if (xr_ptrace_tracer_clone_return(tracer, trap) == false) {
+          return _XR_TRACER_ERROR(
+            tracer,
+            "could not recover hacked syscall argument while clone/fork/vfork "
+            "at process/thread %d.",
+            pid);
+        }
+      }
     }
-    __flip_thread_syscall_status(trap->thread);
+  }
+
+  if (trap->thread->process == NULL) {
+    free(trap->thread);
+    return _XR_TRACER_ERROR(tracer, "untraced process/thread %d occured.", pid);
   }
 
   if (get_resource_info(trap, &ru) == false) {
     return _XR_TRACER_ERROR(
       tracer, "getting resource information of process %d failed.",
-      trap->process->pid);
+      trap->thread->process->pid);
   }
 
   return true;

@@ -30,8 +30,8 @@ grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
   else
     echo "#define XR_X64_SYSCALL_MAX ${CALL_ENTRIES}"
     echo "extern const char *xr_syscall_table_x64[XR_SYSCALL_MAX];"
-    echo "#define XR_X32_SYSCALL_BIT 0x40000000"
-    echo "#define xr_syscall_x64_from_x32(call) ((call) & ~XR_X32_SYSCALL_BIT)"
+    echo "#define XR_X32_MASK_BIT_SYSCALL 0x40000000"
+    echo "#define xr_syscall_x64_from_x32(call) ((call) & ~XR_X32_MASK_BIT_SYSCALL)"
   fi
   echo
   echo "/* syscall macros */"

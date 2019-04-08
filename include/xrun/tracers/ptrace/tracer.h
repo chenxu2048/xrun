@@ -27,16 +27,6 @@ bool xr_ptrace_tracer_strcpy(xr_tracer_t *tracer, int pid, void *address,
 
 void xr_ptrace_tracer_kill(xr_tracer_t *tracer, pid_t pid);
 
-static inline void xr_tracer_ptrace_init(xr_tracer_t *tracer,
-                                         const char *name) {
-  xr_tracer_init(tracer, name);
-  tracer->spwan = xr_ptrace_tracer_spawn;
-  tracer->step = xr_ptrace_tracer_step;
-  tracer->trap = xr_ptrace_tracer_trap;
-  tracer->get = xr_ptrace_tracer_get;
-  tracer->set = xr_ptrace_tracer_set;
-  tracer->strcpy = xr_ptrace_tracer_strcpy;
-  tracer->kill = xr_ptrace_tracer_kill;
-}
+void xr_tracer_ptrace_init(xr_tracer_t *tracer, const char *name);
 
 #endif

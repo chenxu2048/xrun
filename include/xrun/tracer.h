@@ -43,6 +43,8 @@ struct xr_trace_trap_syscall_s {
 
   long args[7];
   long retval;
+
+  pid_t clone_caller;
 };
 
 struct xr_trace_trap_s {
@@ -59,7 +61,6 @@ struct xr_trace_trap_s {
     xr_trace_trap_syscall_t syscall_info;
   };
 
-  xr_process_t *process;
   xr_thread_t *thread;
 };
 
@@ -76,15 +77,15 @@ struct xr_tracer_s {
     xr_tracer_op_kill_f *kill;
   };
 
+  void *tracer_data;
+
   xr_option_t *option;
+  xr_checker_t *failed_checker;
 
   xr_list_t processes;
+  xr_list_t checkers;
   int nprocess;
   int nthread;
-
-  xr_list_t checkers;
-
-  xr_checker_t *failed_checker;
 
   xr_error_t error;
 };

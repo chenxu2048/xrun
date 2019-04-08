@@ -32,9 +32,10 @@ void xr_syscall_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
       "Invalid system call %d is greater than XR_SYSCALL_MAX(%d).",
       result->ecall, XR_SYSCALL_MAX);
   } else {
-    xr_string_format(&result->msg, "System call %s(%d) is denied.",
-                     XR_CALLS_NAME(result->ecall, trap->process->compat),
-                     result->ecall);
+    xr_string_format(
+      &result->msg, "System call %s(%d) is denied.",
+      XR_CALLS_NAME(result->ecall, trap->thread->process->compat),
+      result->ecall);
   }
 }
 

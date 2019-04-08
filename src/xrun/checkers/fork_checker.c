@@ -19,15 +19,29 @@
 #define XR_SYSCALL_CLONE -1
 #endif
 
+struct xr_fork_checker_data_s {
+  xr_tracer_code_t code;
+  size_t nprocess, nthread, total_thread;
+};
+typedef struct xr_fork_checker_data_s xr_fork_checker_data_t;
+static inline xr_fork_checker_data_t *xr_fork_checker_data(
+  xr_checker_t *checker) {
+  return (xr_fork_checker_data_t *)checker->checker_data;
+}
+
 void xr_fork_checker_init(xr_checker_t *checker) {
   checker->setup = xr_fork_checker_setup;
   checker->check = xr_fork_checker_check;
   checker->result = xr_fork_checker_result;
   checker->_delete = xr_fork_checker_delete;
   checker->checker_id = XR_CHECKER_FORK;
+  checker->checker_data = _XR_NEW(xr_fork_checker_data_t);
 }
 
 bool xr_fork_checker_setup(xr_checker_t *checker, xr_option_t *option) {
+  xr_fork_checker_data(checker)->nprocess = option->nprocess;
+  xr_fork_checker_data(checker)->nthread = option->limit_per_process.nthread;
+  xr_fork_checker_data(checker)->total_thread = option->limit.nthread;
   return true;
 }
 
@@ -52,6 +66,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
     int clone_flags = trap->syscall_info.args[CLONE_FLAG_ARGS];
     if (clone_flags & CLONE_UNTRACED) {
       // clone with CLONE_UNTRACED is not allow
+      xr_fork_checker_data(checker)->code = XR_RESULT_CLONEDENY;
       return false;
     }
     // CLONE_THREAD make new task be in the same thread group of caller task
@@ -73,9 +88,9 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
     thread->process->nthread = 0;
     tracer->nprocess++;
   } else {
-    thread->process = trap->process;
+    // thread->process = trap->process;
   }
-  xr_file_set_share(&(trap->thread->fset), &(thread->fset));
+  xr_file_set_share(&trap->thread->fset, &thread->fset);
   if (!clone_files) {
     // copy files
     xr_file_set_own(&(thread->fset));
@@ -84,9 +99,10 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   xr_process_add_thread(thread->process, thread);
   tracer->nthread++;
 
-  if (tracer->nprocess > tracer->option->nprocess ||
-      tracer->nthread > tracer->option->limit.nthread ||
-      thread->process->nthread > tracer->option->limit_per_process.nthread) {
+  if (tracer->nprocess > xr_fork_checker_data(checker)->nprocess ||
+      tracer->nthread > xr_fork_checker_data(checker)->total_thread ||
+      thread->process->nthread > xr_fork_checker_data(checker)->nthread) {
+    xr_fork_checker_data(checker)->code = XR_RESULT_TASKOUT;
     return false;
   }
 
@@ -95,8 +111,12 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 
 void xr_fork_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
                             xr_tracer_result_t *result, xr_trace_trap_t *trap) {
+  result->status = xr_fork_checker_data(checker)->code;
+  result->epid = trap->thread->process->pid;
+  result->etid = trap->thread->tid;
 }
 
 void xr_fork_checker_delete(xr_checker_t *checker) {
+  free(checker->checker_data);
   return;
 }

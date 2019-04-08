@@ -22,7 +22,6 @@ struct xr_process_s {
 
 struct xr_thread_s {
   int tid;
-
   enum xr_thread_syscall_status_e {
     XR_THREAD_CALLIN = 0,
     XR_THREAD_CALLOUT = 1,
@@ -48,6 +47,7 @@ static inline void xr_process_init(xr_process_t *process) {
 }
 static inline void xr_thread_init(xr_thread_t *thread) {
   xr_list_init(&thread->threads);
+  thread->tid = 0;
 }
 void xr_process_delete(xr_process_t *process);
 void xr_thread_delete(xr_thread_t *thread);
