@@ -25,11 +25,11 @@
 #define XR_ARM_CPSR (XR_ARM_cpsr * sizeof(unsigned long int))
 
 static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
-  long scpr = ptrace(PTRACE_PEEKUSER, pid, XR_ARM_CPSR, NULL);
+  long cpsr = ptrace(PTRACE_PEEKUSER, pid, XR_ARM_CPSR, NULL);
   if (errno) {
     return -1;
   }
-  long inst = ptrace(PTRACE_PEEKTEXT, pid, inst - 4, NULL);
+  long inst = ptrace(PTRACE_PEEKTEXT, pid, cpsr - 4, NULL);
   if (errno) {
     return -1;
   }
@@ -46,8 +46,8 @@ static inline bool xr_ptrace_tracer_peek_syscall_arm(
   if (compat == XR_COMPAT_SYSCALL_ARM_EABI) {
     syscall_info->syscall = regs.uregs[7];
   } else {
-    long inst = ptrace(PTRACE_PEEKTEXT, pid,
-                       (void *)(regs->uregs[XR_ARM_cpsr] - 4), NULL);
+    long inst =
+      ptrace(PTRACE_PEEKTEXT, pid, (void *)(regs.uregs[XR_ARM_cpsr] - 4), NULL);
     if (errno) {
       return false;
     }
