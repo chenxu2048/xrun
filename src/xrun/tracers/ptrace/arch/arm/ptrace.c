@@ -8,6 +8,15 @@
 #ifdef XR_ARCH_ARM
 
 #define XR_ARM_cpsr 16
+#define XR_ARM_r6 6
+#define XR_ARM_r5 5
+#define XR_ARM_r4 4
+#define XR_ARM_r3 3
+#define XR_ARM_r2 2
+#define XR_ARM_r1 1
+#define XR_ARM_r0 0
+#define XR_ARM_ORIG_r0 17
+
 // oabi syscall: swi NR
 // instruction: 0x0f9 NR(20bit)
 // eabi syscall: swi 0x0
@@ -62,4 +71,12 @@ bool xr_ptrace_tracer_peek_syscall(int pid,
 int xr_ptrace_tracer_syscall_compat(int pid) {
   return xr_ptrace_tracer_syscall_compat_arm(pid);
 }
+
+bool xr_ptrace_tracer_poke_syscall(int pid, long arg, int index, int compat) {
+  if (index <= 0 || index > 6) {
+    return false;
+  }
+  return ptrace(PTRACE_PEEKUSER, pid, index * sizeof(long), arg) == 0;
+}
+
 #endif

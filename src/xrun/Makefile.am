@@ -3,12 +3,10 @@ AM_CFLAGS = -I $(top_srcdir)/include -fPIC
 
 CHECKERS=checkers/io_checker.c checkers/file_checker.c checkers/fork_checker.c checkers/resource_checker.c checkers/syscall_checker.c
 
-PTRACE_TRACERS=tracers/ptrace/tracer.c tracers/ptrace/arch/ptrace_x86.c tracers/ptrace/arch/ptrace_arm.c
+PTRACE_TRACERS=tracers/ptrace/tracer.c tracers/ptrace/arch/$(XR_ARCH_NAME)/ptrace.c
 TRACERS=$(PTRACE_TRACERS)
 
-ARM_CALLS=calls/arm/calls.c
-X86_CALLS=calls/x86/calls_32.c calls/x86/calls_64.c
-CALLS=$(ARM_CALLS) $(X86_CALLS)
+CALLS=calls/$(XR_ARCH_NAME)/*.c
 
 UTILS=utils/json.c utils/list.c
 

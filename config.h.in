@@ -114,6 +114,15 @@
 /* Version number of package */
 #undef VERSION
 
+/* Build for arm platform */
+#undef XR_ARCH_ARM
+
+/* Build for x64 platform */
+#undef XR_ARCH_X86_64
+
+/* Build for x86 platform */
+#undef XR_ARCH_X86_IA32
+
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the
    #define below would cause a syntax error. */

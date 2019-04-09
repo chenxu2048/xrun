@@ -2,7 +2,6 @@
 #define XR_CALLS_H
 
 #include "config.h"
-#define XR_ARCH_X86_64
 
 #define XR_CALLS_CONVERT(name, compat) xr_calls_convert_impl(name, compat)
 #define XR_CALLS_NAME(scno, compat) xr_calls_name_impl(scno, compat)

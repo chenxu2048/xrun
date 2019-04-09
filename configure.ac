@@ -70,6 +70,26 @@ else
   changequote([,])
 fi
 
+AC_CANONICAL_HOST
+
+AS_CASE([$host_cpu],
+  [x86_64],
+  [
+    AC_SUBST([XR_ARCH_NAME], ["x86"])
+    AC_DEFINE([XR_ARCH_X86_64], [], [Build for x64 platform])
+  ],
+  [i*86],
+  [
+    AC_SUBST([XR_ARCH_NAME], ["x86"])
+    AC_DEFINE(XR_ARCH_X86_IA32, [], [Build for x86 platform])
+  ],
+  [arm*],
+  [
+    AC_SUBST([XR_ARCH_NAME], ["arm"])
+    AC_DEFINE(XR_ARCH_ARM, [], [Build for arm platform])
+  ]
+)
+
 AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/xrun/Makefile
