@@ -13,6 +13,7 @@ AC_PROG_CC_STDC([C99])
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_RANLIB
+AC_PROG_SED
 
 # Checks for libraries.
 
@@ -73,7 +74,7 @@ fi
 AC_CANONICAL_HOST
 
 AM_CONDITIONAL([BUILD_X86], [test $(expr match arch-$host_cpu 'arch-x86_64\|i.*86') -ne 0])
-AM_CONDITIONAL([BUILD_ARM], [test arch-$host_cpu = arch-x86_64])
+AM_CONDITIONAL([BUILD_ARM], [test $(expr match arch-$host_cpu 'arch-arm.*') -ne 0])
 AS_CASE([$host_cpu],
   [x86_64],
   [
@@ -87,6 +88,10 @@ AS_CASE([$host_cpu],
   [arm*],
   [
     AC_DEFINE([XR_ARCH_ARM], [], [Build for arm platform])
+  ],
+  [*],
+  [
+    AC_MSG_ERROR([platform no support])
   ]
 )
 
