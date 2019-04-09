@@ -72,21 +72,21 @@ fi
 
 AC_CANONICAL_HOST
 
+AM_CONDITIONAL([BUILD_X86], [test $(expr match arch-$host_cpu 'arch-x86_64\|i.*86') -ne 0])
+AM_CONDITIONAL([BUILD_ARM], [test arch-$host_cpu = arch-x86_64])
 AS_CASE([$host_cpu],
   [x86_64],
   [
-    AC_SUBST([XR_ARCH_NAME], ["x86"])
     AC_DEFINE([XR_ARCH_X86_64], [], [Build for x64 platform])
+    AC_DEFINE([XR_ARCH_X86_IA32], [], [Build for x86 platform])
   ],
   [i*86],
   [
-    AC_SUBST([XR_ARCH_NAME], ["x86"])
-    AC_DEFINE(XR_ARCH_X86_IA32, [], [Build for x86 platform])
+    AC_DEFINE([XR_ARCH_X86_IA32], [], [Build for x86 platform])
   ],
   [arm*],
   [
-    AC_SUBST([XR_ARCH_NAME], ["arm"])
-    AC_DEFINE(XR_ARCH_ARM, [], [Build for arm platform])
+    AC_DEFINE([XR_ARCH_ARM], [], [Build for arm platform])
   ]
 )
 
