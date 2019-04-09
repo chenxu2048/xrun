@@ -17,7 +17,8 @@
 #define XR_X86_SYSCALL_INST_HIGH 0x05
 #define XR_X86_INT0X80_INST_LOW 0xcd
 #define XR_X86_INT0x80_INST_HIGH 0x80
-#define XR_X64_PC_OFFSET (16 * sizeof(unsigned long long))
+#define XR_X64_PC_OFFSET (RIP * sizeof(unsigned long long))
+#define XR_X64_SCNO_OFFSET (ORIG_RAX * sizeof(unsigned long long))
 // offset of rip is 16
 #define XR_X64_ALIGN_MASK ~0x07ul
 
@@ -52,7 +53,7 @@ int xr_ptrace_tracer_syscall_compat(int pid) {
     return XR_COMPAT_SYSCALL_X86_IA32;
   } else if (low == XR_X86_SYSCALL_INST_LOW &&
              high == XR_X86_SYSCALL_INST_HIGH) {
-    long syscall = ptrace(PTRACE_PEEKUSER, pid, RAX, 0);
+    long syscall = ptrace(PTRACE_PEEKUSER, pid, XR_X64_SCNO_OFFSET, NULL);
     if (errno) {
       return XR_COMPAT_SYSCALL_INVALID;
     } else if (syscall & XR_X32_MASK_BIT_SYSCALL) {

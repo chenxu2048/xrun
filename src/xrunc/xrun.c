@@ -347,6 +347,7 @@ int main(int argc, char *argv[]) {
     retval = 1;
     goto xrn_tracer_failed;
   }
+  xr_tracer_result_init(&result);
   bool res = xr_tracer_trace(&tracer, &cfg.entry, &result);
   if (res == false) {
     xr_error_tostring(&tracer.error, &cfg.error);

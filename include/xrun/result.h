@@ -36,6 +36,7 @@ struct xr_tracer_process_result_s {
   long time;
   int nthread;
   int nfiles;
+  xr_tracer_process_result_t *next;
 };
 
 struct xr_tracer_result_s {
@@ -54,9 +55,17 @@ struct xr_tracer_result_s {
   int epid, etid;
 };
 
+static inline void xr_tracer_result_init(xr_tracer_result_t *result) {
+  memset(result, 0, sizeof(xr_tracer_result_t));
+  result->status = XR_RESULT_UNKNOWN;
+  xr_string_zero(&result->msg);
+}
+
 static inline void xr_tracer_result_delete(xr_tracer_result_t *result) {
-  if (result->nprocess != 0) {
-    free(result->processes);
+  while (result->processes != NULL) {
+    xr_tracer_process_result_t *process = result->processes;
+    result->processes = process->next;
+    free(process);
   }
   if (result->status == XR_RESULT_PATHDENY) {
     xr_path_delete(&result->epath);

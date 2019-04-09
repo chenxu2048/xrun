@@ -364,7 +364,6 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
       xr_thread_init(trap->thread);
       trap->thread->tid = pid;
       trap->thread->process = NULL;
-      compat = xr_ptrace_tracer_syscall_compat(pid);
     } else {
       compat = trap->thread->process->compat;
     }
@@ -373,6 +372,9 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
       compat = xr_ptrace_tracer_syscall_compat(pid);
       if (compat == XR_COMPAT_SYSCALL_INVALID) {
         return _XR_TRACER_ERROR(tracer, "dectect system compat mode failed");
+      }
+      if (trap->thread->process != NULL) {
+        trap->thread->process->compat = compat;
       }
     }
 
@@ -406,6 +408,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
                                     pid);
           } else {
             trap->thread->process = caller->process;
+            trap->syscall_info.clone_caller = caller;
           }
         }
         if (xr_ptrace_tracer_clone_return(tracer, trap) == false) {

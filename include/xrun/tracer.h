@@ -44,7 +44,7 @@ struct xr_trace_trap_syscall_s {
   long args[7];
   long retval;
 
-  pid_t clone_caller;
+  xr_thread_t *clone_caller;
 };
 
 struct xr_trace_trap_s {
@@ -113,7 +113,12 @@ bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...);
 
 void xr_tracer_delete(xr_tracer_t *tracer);
 
+#define __LINE(line) #line
+#define __LINE_(line) __LINE(line)
+#define __XR_LINE__ __LINE_(__LINE__)
+#define _XR_TRACER_ERROR_WRAP(msg) ("%s:" __XR_LINE__ ": " msg "\n"), __func__
+
 #define _XR_TRACER_ERROR(tracer, msg, ...) \
-  (xr_tracer_error(tracer, "%s: " msg "\n", __func__, ##__VA_ARGS__))
+  (xr_tracer_error(tracer, _XR_TRACER_ERROR_WRAP(msg), ##__VA_ARGS__))
 
 #endif

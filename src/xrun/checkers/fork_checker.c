@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include <sched.h>
 
-#define CLONE_FLAG_ARGS 1
+#define CLONE_FLAG_ARGS(call) 1
 
 #include "xrun/calls.h"
 #include "xrun/checkers/fork_checker.h"
@@ -54,16 +54,16 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 
   int tid = trap->syscall_info.retval;
   int syscall = trap->syscall_info.syscall;
-  bool fork = false, clone_files = false;
+  bool fork = false, clone_files = false, clone_fs = false;
 
   if (syscall != XR_SYSCALL_CLONE || syscall != XR_SYSCALL_FORK ||
-      syscall != XR_SYSCALL_VFORK || tid == 0) {
+      syscall != XR_SYSCALL_VFORK || tid != 0) {
     // not a clone, fork, vfork syscall
-    // or, callee syscall return.
+    // or, caller syscall return.
     // checking
     return true;
   } else if (syscall == XR_SYSCALL_CLONE) {
-    int clone_flags = trap->syscall_info.args[CLONE_FLAG_ARGS];
+    int clone_flags = trap->syscall_info.args[CLONE_FLAG_ARGS(syscall)];
     if (clone_flags & CLONE_UNTRACED) {
       // clone with CLONE_UNTRACED is not allow
       xr_fork_checker_data(checker)->code = XR_RESULT_CLONEDENY;
@@ -71,33 +71,41 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
     }
     // CLONE_THREAD make new task be in the same thread group of caller task
     fork = ((clone_flags & CLONE_THREAD) == 0);
-    clone_files = ((clone_flags & CLONE_FILES) == 0);
+    clone_files = ((clone_flags & CLONE_FILES) != 0);
+    clone_fs = ((clone_flags & CLONE_FS) != 0);
   } else {
     // fork and vfork make new process
     fork = true;
   }
 
-  xr_thread_t *thread = _XR_NEW(xr_thread_t);
-  thread->tid = tid;
-  thread->tid = XR_THREAD_CALLIN;
+  xr_thread_t *thread = trap->thread;
+  xr_thread_t *caller = trap->syscall_info.clone_caller;
+
+  // clone files
+  xr_file_set_share(&caller->fset, &thread->fset);
+  if (!clone_files) {
+    // copy files
+    xr_file_set_own(&thread->fset);
+  }
+
+  xr_fs_share(&caller->fs, &thread->fs);
+  if (!clone_fs) {
+    // copy fs
+    xr_fs_own(&thread->fs);
+  }
+
+  tracer->nthread++;
+
   // thread will return from fork or clone, so should be XR_THREAD_CALLIN
   if (fork) {
     // fork will create new thread group
     thread->process = _XR_NEW(xr_process_t);
-    xr_list_init(&(thread->process->threads));
-    thread->process->nthread = 0;
+    xr_process_init(thread->process);
+    xr_list_add(&tracer->processes, &thread->process->processes);
     tracer->nprocess++;
   } else {
-    // thread->process = trap->process;
+    xr_process_add_thread(thread->process, thread);
   }
-  xr_file_set_share(&trap->thread->fset, &thread->fset);
-  if (!clone_files) {
-    // copy files
-    xr_file_set_own(&(thread->fset));
-  }
-
-  xr_process_add_thread(thread->process, thread);
-  tracer->nthread++;
 
   if (tracer->nprocess > xr_fork_checker_data(checker)->nprocess ||
       tracer->nthread > xr_fork_checker_data(checker)->total_thread ||
