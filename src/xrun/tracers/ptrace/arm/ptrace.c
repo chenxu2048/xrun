@@ -22,10 +22,10 @@
 // eabi syscall: swi 0x0
 // instruction: 0x0f900000
 #define XR_ARM_OABI_MASK 0x00ffffff
-#define XR_ARM_CSPR (XR_ARM_cspr * sizeof(unsigned long int))
+#define XR_ARM_CPSR (XR_ARM_cpsr * sizeof(unsigned long int))
 
 static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
-  long scpr = ptrace(PTRACE_PEEKUSER, pid, XR_ARM_CSPR, NULL);
+  long scpr = ptrace(PTRACE_PEEKUSER, pid, XR_ARM_CPSR, NULL);
   if (errno) {
     return -1;
   }
@@ -43,7 +43,7 @@ static inline bool xr_ptrace_tracer_peek_syscall_arm(
   if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
     return false;
   }
-  if (compat == XR_SYSCALL_COMPAT_ARM_EABI) {
+  if (compat == XR_COMPAT_SYSCALL_ARM_EABI) {
     syscall_info->syscall = regs.uregs[7];
   } else {
     long inst = ptrace(PTRACE_PEEKTEXT, pid,
