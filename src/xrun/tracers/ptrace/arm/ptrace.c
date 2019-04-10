@@ -18,10 +18,10 @@
 #define XR_ARM_ORIG_r0 17
 
 // oabi syscall: swi NR
-// instruction: 0x0f9 NR(20bit)
+// instruction: 0xef NR(24bit)
 // eabi syscall: swi 0x0
-// instruction: 0x0f900000
-#define XR_ARM_OABI_MASK 0x00ffffff
+// instruction: 0xef000000
+#define XR_ARM_OABI_MASK 0x000fffff
 #define XR_ARM_CPSR (XR_ARM_cpsr * sizeof(unsigned long int))
 
 static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
