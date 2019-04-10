@@ -23,7 +23,7 @@ typedef struct xr_list_head_s xr_list_head_t;
   ((type *)((long)(list)-offsetof(type, member)))
 
 static inline bool xr_list_empty(xr_list_t *list) {
-  return list->prev == list->next;
+  return list == list->next;
 }
 
 static inline void xr_list_add(xr_list_t *prev, xr_list_t *elem) {

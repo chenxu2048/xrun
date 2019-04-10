@@ -57,7 +57,7 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
   if (tracer->spwan(tracer, entry) == false) {
     _XR_TRACER_TRACE_ERROR(ok, tracer, "tracer spwan error.");
   } else {
-    while (ok && xr_list_empty(&tracer->processes)) {
+    while (ok && xr_list_empty(&tracer->processes) == false) {
       if (tracer->trap(tracer, &trap) == false) {
         _XR_TRACER_TRACE_ERROR(ok, tracer, "tracer trap failed.");
         break;
