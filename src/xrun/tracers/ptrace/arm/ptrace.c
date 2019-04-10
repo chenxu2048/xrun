@@ -7,7 +7,7 @@
 
 #ifdef XR_ARCH_ARM
 
-#define XR_ARM_cpsr 16
+#define XR_ARM_pc 15
 #define XR_ARM_r6 6
 #define XR_ARM_r5 5
 #define XR_ARM_r4 4
@@ -22,19 +22,20 @@
 // eabi syscall: swi 0x0
 // instruction: 0xef000000
 #define XR_ARM_OABI_MASK 0x000fffff
-#define XR_ARM_CPSR (XR_ARM_cpsr * sizeof(unsigned long int))
+#define XR_ARM_OABI_BIT 0xef900000
+#define XR_ARM_PC (XR_ARM_pc * sizeof(unsigned long int))
 
 static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
-  long cpsr = ptrace(PTRACE_PEEKUSER, pid, XR_ARM_CPSR, NULL);
+  long pc = ptrace(PTRACE_PEEKUSER, pid, XR_ARM_PC, NULL);
   if (errno) {
-    return -1;
+    return XR_COMPAT_SYSCALL_INVALID;
   }
-  long inst = ptrace(PTRACE_PEEKTEXT, pid, cpsr - 4, NULL);
+  long inst = ptrace(PTRACE_PEEKTEXT, pid, pc, NULL);
   if (errno) {
-    return -1;
+    return XR_COMPAT_SYSCALL_INVALID;
   }
-  return inst & XR_ARM_OABI_MASK == 0 ? XR_COMPAT_SYSCALL_ARM_EABI
-                                      : XR_COMPAT_SYSCALL_ARM_OABI;
+  return (inst & XR_ARM_OABI_BIT) == 0 ? XR_COMPAT_SYSCALL_ARM_EABI
+                                       : XR_COMPAT_SYSCALL_ARM_OABI;
 }
 
 static inline bool xr_ptrace_tracer_peek_syscall_arm(
