@@ -37,6 +37,10 @@ typedef bool xr_tracer_op_strcpy_f(xr_tracer_t *tracer, int pid, void *address,
 
 typedef void xr_tracer_op_kill_f(xr_tracer_t *tracer, int pid);
 
+typedef void xr_tracer_op_clean_f(xr_tracer_t *tracer);
+
+typedef void xr_tracer_op_delete_f(xr_tracer_t *tracer);
+
 typedef struct xr_trace_trap_syscall_s xr_trace_trap_syscall_t;
 struct xr_trace_trap_syscall_s {
   long syscall;
@@ -75,6 +79,8 @@ struct xr_tracer_s {
     xr_tracer_op_set_f *set;
     xr_tracer_op_strcpy_f *strcpy;
     xr_tracer_op_kill_f *kill;
+    xr_tracer_op_clean_f *clean;
+    xr_tracer_op_delete_f *_delete;
   };
 
   void *tracer_data;

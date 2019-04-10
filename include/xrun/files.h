@@ -92,12 +92,14 @@ static inline void xr_file_set_create(xr_file_set_t *fset) {
  * @@fset
  */
 static inline void xr_file_set_delete(xr_file_set_t *fset) {
-  if (fset->data->own-- != 0) {
+  fset->data->own--;
+  if (fset->data->own != 0) {
+    fset->data = NULL;
     return;
   }
   xr_list_t *cur, *temp;
   xr_file_t *file;
-  _xr_list_for_each_safe(&(fset->data->files), cur, temp) {
+  _xr_list_for_each_safe(&fset->data->files, cur, temp) {
     xr_list_del(cur);
     file = xr_list_entry(cur, xr_file_t, files);
     xr_file_delete(file);
@@ -128,13 +130,13 @@ static inline void xr_file_set_own(xr_file_set_t *fset) {
     return;
   }
   struct xr_file_set_shared_s *data = _XR_NEW(struct xr_file_set_shared_s);
-  data->own = 0;
+  data->own = 1;
   data->total_read = fset->data->total_read;
   data->total_write = fset->data->total_write;
   // copy file list
   xr_file_t *file;
-  xr_list_init(&(data->files));
-  _xr_list_for_each_entry_r(&(fset->data->files), file, xr_file_t, files) {
+  xr_list_init(&data->files);
+  _xr_list_for_each_entry_r(&fset->data->files, file, xr_file_t, files) {
     xr_file_t *dfile = _XR_NEW(xr_file_t);
     xr_file_dup(file, dfile, file->fd);
     xr_list_add(&data->files, &dfile->files);
@@ -194,7 +196,7 @@ static inline void xr_file_set_add_file(xr_file_set_t *fset, xr_file_t *file) {
  */
 static inline void xr_file_set_remove_file(xr_file_set_t *fset,
                                            xr_file_t *file) {
-  xr_list_del(&(file->files));
+  xr_list_del(&file->files);
   xr_file_delete(file);
   free(file);
   fset->data->file_holding--;
@@ -233,6 +235,7 @@ static inline void xr_fs_share(xr_fs_t *fs, xr_fs_t *sfs) {
 static inline void xr_fs_own(xr_fs_t *fs) {
   if (fs->data->own >= 1) {
     struct xr_fs_shared_s *data = _XR_NEW(struct xr_fs_shared_s);
+    data->own = 1;
     xr_string_init(&data->pwd, fs->data->pwd.length + 1);
     xr_string_copy(&data->pwd, &fs->data->pwd);
     fs->data->own--;
@@ -241,7 +244,9 @@ static inline void xr_fs_own(xr_fs_t *fs) {
 }
 
 static inline void xr_fs_delete(xr_fs_t *fs) {
-  if (fs->data->own-- != 0) {
+  fs->data->own--;
+  if (fs->data->own != 0) {
+    fs->data = NULL;
     return;
   }
   xr_path_delete(&fs->data->pwd);

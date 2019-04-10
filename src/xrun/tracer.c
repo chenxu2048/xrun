@@ -140,6 +140,8 @@ void xr_tracer_clean(xr_tracer_t *tracer) {
     xr_process_delete(process);
     free(process);
   }
+
+  _XR_CALLP(tracer, clean);
   tracer->nprocess = 0;
   tracer->nthread = 0;
   tracer->failed_checker = NULL;
@@ -157,6 +159,7 @@ void xr_tracer_delete(xr_tracer_t *tracer) {
   }
   // clean up all process
   xr_tracer_clean(tracer);
+  _XR_CALLP(tracer, _delete);
 }
 
 bool xr_tracer_error(xr_tracer_t *tracer, const char *msg, ...) {

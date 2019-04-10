@@ -52,6 +52,15 @@ struct xr_tracer_ptrace_data_s {
   xr_tracer_ptrace_pending_clone_t *pending;
 };
 
+static inline void xr_tracer_ptrace_data_delete(xr_tracer_ptrace_data_t *data) {
+  xr_tracer_ptrace_pending_clone_t *pending;
+  while (data->pending) {
+    pending = data->pending;
+    data->pending = pending->next;
+    free(pending);
+  }
+}
+
 static inline xr_tracer_ptrace_data_t *xr_tracer_ptrace_data(
   xr_tracer_t *tracer) {
   return (xr_tracer_ptrace_data_t *)tracer->tracer_data;
@@ -66,8 +75,19 @@ void xr_tracer_ptrace_init(xr_tracer_t *tracer, const char *name) {
   tracer->set = xr_ptrace_tracer_set;
   tracer->strcpy = xr_ptrace_tracer_strcpy;
   tracer->kill = xr_ptrace_tracer_kill;
+  tracer->_delete = xr_ptrace_tracer_delete;
+  tracer->clean = xr_ptrace_tracer_clean;
   tracer->tracer_data = _XR_NEW(xr_tracer_ptrace_data_t);
   memset(tracer->tracer_data, 0, sizeof(xr_tracer_ptrace_data_t));
+}
+
+void xr_ptrace_tracer_clean(xr_tracer_t *tracer) {
+  xr_tracer_ptrace_data_delete(xr_tracer_ptrace_data(tracer));
+}
+
+void xr_ptrace_tracer_delete(xr_tracer_t *tracer) {
+  xr_ptrace_tracer_clean(tracer);
+  free(tracer->tracer_data);
 }
 
 // we try to set close on exec for any other file description

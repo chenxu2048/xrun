@@ -27,6 +27,10 @@ bool xr_ptrace_tracer_strcpy(xr_tracer_t *tracer, int pid, void *address,
 
 void xr_ptrace_tracer_kill(xr_tracer_t *tracer, pid_t pid);
 
+void xr_ptrace_tracer_clean(xr_tracer_t *tracer);
+
+void xr_ptrace_tracer_delete(xr_tracer_t *tracer);
+
 void xr_tracer_ptrace_init(xr_tracer_t *tracer, const char *name);
 
 #endif

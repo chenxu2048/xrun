@@ -353,9 +353,11 @@ int main(int argc, char *argv[]) {
     xr_error_tostring(&tracer.error, &cfg.error);
     xrn_print_error(&cfg.error);
   }
+  xr_result_delete(&result);
 xrn_tracer_failed:
   xr_tracer_delete(&tracer);
 xrn_parse_option_error:
+  free(cfg.entry.argv);
   xrn_global_option_set_delete(&cfg);
   return retval;
 }
