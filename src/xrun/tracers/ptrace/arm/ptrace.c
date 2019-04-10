@@ -17,12 +17,13 @@
 #define XR_ARM_r0 0
 #define XR_ARM_ORIG_r0 17
 
-// oabi syscall: swi NR
-// instruction: 0xef NR(24bit)
+// oabi syscall: swi NR + 0x900000
+// instruction: 0xef NR(24bit) + 0x900000
 // eabi syscall: swi 0x0
 // instruction: 0xef000000
-#define XR_ARM_OABI_MASK 0x000fffff
-#define XR_ARM_OABI_BIT 0xef900000
+#define XR_ARM_EABI_INST 0xef000000
+#define XR_ARM_OABI_MASK 0x00ffffff
+
 #define XR_ARM_PC (XR_ARM_pc * sizeof(unsigned long int))
 
 static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
@@ -34,8 +35,12 @@ static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
   if (errno) {
     return XR_COMPAT_SYSCALL_INVALID;
   }
-  return (inst & XR_ARM_OABI_BIT) == 0 ? XR_COMPAT_SYSCALL_ARM_EABI
-                                       : XR_COMPAT_SYSCALL_ARM_OABI;
+  if (inst == XR_ARM_EABI_INST) {
+    return XR_COMPAT_SYSCALL_ARM_EABI;
+  }
+  return ((inst & XR_ARM_OABI_MASK) == XR_ARM_EABI_INST)
+           ? XR_COMPAT_SYSCALL_ARM_OABI
+           : XR_COMPAT_SYSCALL_INVALID;
 }
 
 static inline bool xr_ptrace_tracer_peek_syscall_arm(
