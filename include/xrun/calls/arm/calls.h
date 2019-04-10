@@ -12,14 +12,16 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
   switch (compat) {
     case XR_COMPAT_SYSCALL_ARM_EABI:
       for (int i = 0; i < XR_SYSCALL_MAX; ++i) {
-        if (strcmp(name, xr_syscall_table_arm[i]) == 0) {
+        if (xr_syscall_table_arm[i] != NULL &&
+            strcmp(name, xr_syscall_table_arm[i]) == 0) {
           return i;
         }
       }
       break;
     case XR_COMPAT_SYSCALL_ARM_OABI:
       for (int i = XR_SYSCALL_MAX - 1; i >= 0; --i) {
-        if (strcmp(name, xr_syscall_table_arm[i])) {
+        if (xr_syscall_table_arm[i] != NULL &&
+            strcmp(name, xr_syscall_table_arm[i])) {
           return i;
         }
       }

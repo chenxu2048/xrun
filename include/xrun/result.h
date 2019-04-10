@@ -26,6 +26,10 @@ enum xr_tracer_code_e {
   XR_RESULT_CALLDENY,
   // path deny
   XR_RESULT_PATHDENY,
+  // write too much
+  XR_RESULT_WRITEOUT,
+  // read too much
+  XR_RESULT_READOUT,
   // ok
   XR_RESULT_OK,
 };
@@ -41,10 +45,7 @@ struct xr_tracer_process_result_s {
 
 struct xr_tracer_result_s {
   xr_tracer_code_t status;
-  xr_string_t msg;
   int nprocess;
-  xr_tracer_process_result_t *processes;
-  xr_tracer_process_result_t *eprocess;
   union {
     int ecall;
     struct {
@@ -53,21 +54,31 @@ struct xr_tracer_result_s {
     };
   };
   int epid, etid;
+  xr_tracer_process_result_t *exited_processes;
+  xr_tracer_process_result_t *aborted_processes;
+  xr_tracer_process_result_t *error_process;
 };
 
 static inline void xr_tracer_result_init(xr_tracer_result_t *result) {
   memset(result, 0, sizeof(xr_tracer_result_t));
   result->status = XR_RESULT_UNKNOWN;
-  xr_string_zero(&result->msg);
 }
 
 static inline void xr_tracer_result_delete(xr_tracer_result_t *result) {
-  while (result->processes != NULL) {
-    xr_tracer_process_result_t *process = result->processes;
-    result->processes = process->next;
+  while (result->exited_processes != NULL) {
+    xr_tracer_process_result_t *process = result->exited_processes;
+    result->exited_processes = process->next;
     free(process);
   }
-  if (result->status == XR_RESULT_PATHDENY) {
+  while (result->aborted_processes != NULL) {
+    xr_tracer_process_result_t *process = result->aborted_processes;
+    result->aborted_processes = process->next;
+    free(process);
+  }
+  free(result->error_process);
+  if (result->status == XR_RESULT_PATHDENY ||
+      result->status == XR_RESULT_WRITEOUT ||
+      result->status == XR_RESULT_READOUT) {
     xr_path_delete(&result->epath);
   }
 }

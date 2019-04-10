@@ -41,9 +41,18 @@ static inline void xr_process_add_thread(xr_process_t *process,
   thread->process = process;
 }
 
+static inline void xr_process_remove_thread(xr_process_t *process,
+                                            xr_thread_t *thread) {
+  if (process != thread->process) {
+    return;
+  }
+  xr_list_del(&thread->threads);
+}
+
 static inline void xr_process_init(xr_process_t *process) {
   xr_list_init(&process->processes);
   xr_list_init(&process->threads);
+  process->nthread = 0;
 }
 static inline void xr_thread_init(xr_thread_t *thread) {
   xr_list_init(&thread->threads);

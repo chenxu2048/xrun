@@ -99,12 +99,12 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   // thread will return from fork or clone, so should be XR_THREAD_CALLIN
   if (fork) {
     // fork will create new thread group
+    xr_process_remove_thread(thread->process, thread);
     thread->process = _XR_NEW(xr_process_t);
     xr_process_init(thread->process);
     xr_list_add(&tracer->processes, &thread->process->processes);
-    tracer->nprocess++;
-  } else {
     xr_process_add_thread(thread->process, thread);
+    tracer->nprocess++;
   }
 
   if (tracer->nprocess > xr_fork_checker_data(checker)->nprocess ||
@@ -118,10 +118,8 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 }
 
 void xr_fork_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                            xr_tracer_result_t *result, xr_trace_trap_t *trap) {
+                            xr_tracer_result_t *result) {
   result->status = xr_fork_checker_data(checker)->code;
-  result->epid = trap->thread->process->pid;
-  result->etid = trap->thread->tid;
 }
 
 void xr_fork_checker_delete(xr_checker_t *checker) {

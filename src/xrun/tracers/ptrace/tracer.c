@@ -407,7 +407,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
                                     "clone/fork/vfork at process/thread %d.",
                                     pid);
           } else {
-            trap->thread->process = caller->process;
+            xr_process_add_thread(caller->process, trap->thread);
             trap->syscall_info.clone_caller = caller;
           }
         }

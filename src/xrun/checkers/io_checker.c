@@ -6,20 +6,17 @@
 #include "xrun/tracer.h"
 
 struct xr_io_checker_data_s {
-  xr_file_t *file;
-  xr_thread_t *thread;
+  xr_path_t path;
+  enum xr_io_checker_result_e {
+    XR_IO_CHECKER_RESULT_WRITE,
+    XR_IO_CHECKER_RESULT_READ,
+  } result;
+  long long length;
 };
 typedef struct xr_io_checker_data_s xr_io_checker_data_t;
 
 static inline xr_io_checker_data_t *xr_io_checker_data(xr_checker_t *checker) {
   return (xr_io_checker_data_t *)(checker->checker_data);
-}
-
-static inline bool xr_io_checker_failed(xr_checker_t *checker, xr_file_t *file,
-                                        xr_thread_t *thread) {
-  xr_io_checker_data(checker)->file = file;
-  xr_io_checker_data(checker)->thread = thread;
-  return false;
 }
 
 bool xr_io_checker_setup(xr_checker_t *checker, xr_option_t *option) {
@@ -36,8 +33,13 @@ static inline bool __do_process_read_check(xr_checker_t *checker,
     file->read_length += nread;
   }
   xr_file_set_read(fset, nread);
-  if (xr_file_set_get_read(fset) > option->limit_per_process.nread) {
-    return xr_io_checker_failed(checker, file, thread);
+  long long total_read = xr_file_set_get_read(fset);
+  if (total_read > option->limit_per_process.nread) {
+    xr_io_checker_data_t *data = xr_io_checker_data(checker);
+    xr_string_copy(&data->path, &file->path);
+    data->length = total_read;
+    data->result = XR_IO_CHECKER_RESULT_WRITE;
+    return false;
   }
   return true;
 }
@@ -51,8 +53,13 @@ static inline bool __do_process_write_check(xr_checker_t *checker,
     file->read_length += nwrite;
   }
   xr_file_set_write(fset, nwrite);
-  if (xr_file_set_get_write(fset) > option->limit_per_process.nwrite) {
-    return xr_io_checker_failed(checker, file, thread);
+  long long total_write = xr_file_set_get_write(fset);
+  if (total_write > option->limit_per_process.nwrite) {
+    xr_io_checker_data_t *data = xr_io_checker_data(checker);
+    xr_string_copy(&data->path, &file->path);
+    data->length = total_write;
+    data->result = XR_IO_CHECKER_RESULT_WRITE;
+    return false;
   }
   return true;
 }
@@ -142,8 +149,19 @@ bool xr_io_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 }
 
 void xr_io_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                          xr_tracer_result_t *result, xr_trace_trap_t *trap) {
-  return;
+                          xr_tracer_result_t *result) {
+  xr_io_checker_data_t *data = xr_io_checker_data(checker);
+  switch (data->result) {
+    case XR_IO_CHECKER_RESULT_READ:
+      result->status = XR_RESULT_READOUT;
+      break;
+    case XR_IO_CHECKER_RESULT_WRITE:
+      result->status = XR_RESULT_WRITEOUT;
+      break;
+    default:
+      result->status = XR_RESULT_UNKNOWN;
+      break;
+  }
 }
 
 void xr_io_checker_delete(xr_checker_t *checker) {
@@ -158,4 +176,5 @@ void xr_io_checker_init(xr_checker_t *checker) {
   checker->_delete = xr_io_checker_delete;
   checker->checker_id = XR_CHECKER_IO;
   checker->checker_data = _XR_NEW(xr_io_checker_data_t);
+  xr_string_zero(&xr_io_checker_data(checker)->path);
 }

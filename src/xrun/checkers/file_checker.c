@@ -234,15 +234,8 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 }
 
 void xr_file_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                            xr_tracer_result_t *result, xr_trace_trap_t *trap) {
-  if (trap->trap != XR_TRACE_TRAP_SYSCALL) {
-    result->status = XR_RESULT_UNKNOWN;
-    _XR_TRACER_ERROR(tracer, "Invalid status of file checker.");
-  }
+                            xr_tracer_result_t *result) {
   result->status = XR_RESULT_PATHDENY;
-  result->etid = trap->thread->tid;
-  result->epid = trap->thread->process->pid;
-
   xr_file_checker_data_t *data = xr_file_checker_data(checker);
   xr_string_copy(&result->epath, data->epath);
   result->eflags = data->flags;

@@ -3,12 +3,11 @@
 
 #include <string.h>
 
-#ifdef XR_ARCH_X86_64
-
 #define XR_COMPAT_SYSCALL_X86_64 1
 #define XR_COMPAT_SYSCALL_X86_X32 2
 #define XR_COMPAT_SYSCALL_X86_IA32 3
 
+#ifdef XR_ARCH_X86_64
 #define XR_ARCH_X86_IA32
 #endif
 
@@ -18,18 +17,22 @@
 
 static inline int xr_calls_convert_ia32_impl(const char *name) {
   for (int i = 0; i <= XR_IA32_SYSCALL_MAX; ++i) {
-    if (strcmp(name, xr_syscall_table_ia32[i]) == 0) {
+    if (xr_syscall_table_ia32[i] != NULL &&
+        strcmp(name, xr_syscall_table_ia32[i]) == 0) {
       return i;
     }
   }
   return -1;
 }
 
+#ifdef XR_ARCH_X86_64
+
 static inline int xr_calls_convert_impl(const char *name, int compat) {
   switch (compat) {
     case XR_COMPAT_SYSCALL_X86_64: {
       for (int i = 0; i <= XR_SYSCALL_MAX; ++i) {
-        if (strcmp(name, xr_syscall_table_x64[i]) == 0) {
+        if (xr_syscall_table_x64[i] != NULL &&
+            strcmp(name, xr_syscall_table_x64[i]) == 0) {
           return i;
         }
       }
@@ -37,7 +40,8 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
     }
     case XR_COMPAT_SYSCALL_X86_X32: {
       for (int i = XR_SYSCALL_MAX; i >= 0; --i) {
-        if (strcmp(name, xr_syscall_table_x64[i]) == 0) {
+        if (xr_syscall_table_x64[i] != NULL &&
+            strcmp(name, xr_syscall_table_x64[i]) == 0) {
           return i;
         }
       }
@@ -58,19 +62,25 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
 
 static inline const char *const xr_calls_name_impl(long scno, int compat) {
   if (compat == XR_COMPAT_SYSCALL_X86_IA32) {
-    return XR_IA32_SYSCALL_MAX > scno ? xr_syscall_table_ia32[scno] : NULL;
+    return (XR_IA32_SYSCALL_MAX > scno && scno >= 0)
+             ? xr_syscall_table_ia32[scno]
+             : NULL;
   } else {
-    return XR_X64_SYSCALL_MAX > scno ? xr_syscall_table_x64[scno] : NULL;
+    return (XR_X64_SYSCALL_MAX > scno && scno >= 0) ? xr_syscall_table_x64[scno]
+                                                    : NULL;
   }
 }
 
-#if !defined(XR_ARCH_X86_64)
-#undef XR_CALLS_CONVERT
-#define XR_CALLS_CONVERT(name, compat) xr_calls_convert_ia32_impl(name)
+#else
 
-#undef XR_CALLS_NAME
-#define XR_CALLS_NAME(scno, compat) \
-  xr_calls_name_impl(scno, XR_COMPAT_SYSCALL_X86_IA32)
+static inline const char *const xr_calls_name_impl(long scno, int compat) {
+  return (XR_IA32_SYSCALL_MAX > scno && scno >= 0) ? xr_syscall_table_ia32[scno]
+                                                   : NULL;
+}
+
+static inline int xr_calls_convert_impl(const char *name, int compat) {
+  return xr_calls_convert_ia32_impl(name);
+}
 
 #endif
 
