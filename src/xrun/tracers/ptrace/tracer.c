@@ -219,7 +219,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
     xr_string_t estr;
     // read rest
     xr_string_init(&estr, estr_len + 1);
-    read(error_pipe[1], estr.string, sizeof(char) * estr_len);
+    read(error_pipe[0], estr.string, sizeof(char) * estr_len);
     estr.string[estr_len] = 0;
     estr.length = estr_len;
     // clear errno

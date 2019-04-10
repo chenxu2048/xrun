@@ -30,7 +30,7 @@ static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
   if (errno) {
     return XR_COMPAT_SYSCALL_INVALID;
   }
-  long inst = ptrace(PTRACE_PEEKTEXT, pid, pc, NULL);
+  long inst = ptrace(PTRACE_PEEKTEXT, pid, pc - 4, NULL);
   if (errno) {
     return XR_COMPAT_SYSCALL_INVALID;
   }

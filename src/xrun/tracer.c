@@ -94,6 +94,8 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
     if (result->status == XR_RESULT_UNKNOWN) {
       result->status = XR_RESULT_TRACERERR;
     }
+  } else {
+    result->status = XR_RESULT_OK;
   }
   result->nprocess = tracer->nprocess;
   xr_tracer_clean(tracer);
