@@ -48,7 +48,7 @@ static inline bool xr_ptrace_tracer_peek_syscall_arm(
     syscall_info->syscall = regs.uregs[7];
   } else {
     long inst =
-      ptrace(PTRACE_PEEKTEXT, pid, (void *)(regs.uregs[XR_ARM_cpsr] - 4), NULL);
+      ptrace(PTRACE_PEEKTEXT, pid, (void *)(regs.uregs[XR_ARM_pc] - 4), NULL);
     if (errno) {
       return false;
     }
