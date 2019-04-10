@@ -1,20 +1,45 @@
 #ifndef XR_OPTION_H
 #define XR_OPTION_H
 
+#include <limits.h>
+
 #include "xrun/calls.h"
 #include "xrun/utils/path.h"
 #include "xrun/utils/time.h"
+
+#define XR_IO_UNLIMITED ULLONG_MAX
+#define XR_NTHREAD_UNLIMITED INT_MAX
+#define XR_NFILE_UNLIMITED INT_MAX
+#define XR_MEMORY_UNLIMITED LONG_MAX
+
+#define _XR_TIME_UNLIMITED \
+  { .sys_time = ULONG_MAX, .user_time = ULONG_MAX }
+
+static const xr_time_t __xr_time_unlimited = _XR_TIME_UNLIMITED;
+
+#define XR_TIME_UNLIMITED __xr_time_unlimited
 
 struct xr_limit_s;
 typedef struct xr_limit_s xr_limit_t;
 
 struct xr_limit_s {
   int nthread;
-  int memory;
+  long memory;
   xr_time_t time;
   int nfile;
   unsigned long long nread, nwrite;
 };
+
+#define _XR_LIMIT_UNLIMITED                                         \
+  {                                                                 \
+    .nthread = XR_NTHREAD_UNLIMITED, .memory = XR_MEMORY_UNLIMITED, \
+    .time = _XR_TIME_UNLIMITED, .nfile = XR_NFILE_UNLIMITED,        \
+    .nread = XR_IO_UNLIMITED, .nwrite = XR_IO_UNLIMITED,            \
+  }
+
+static const xr_limit_t __xr_limit_unlimited = _XR_LIMIT_UNLIMITED;
+
+#define XR_LIMIT_UNLIMITED __xr_limit_unlimited
 
 typedef struct xr_access_entry_s xr_access_entry_t;
 typedef struct xr_access_list_s xr_access_list_t;

@@ -11,7 +11,7 @@ struct xr_io_checker_data_s {
     XR_IO_CHECKER_RESULT_WRITE,
     XR_IO_CHECKER_RESULT_READ,
   } result;
-  long long length;
+  unsigned long long length;
 };
 typedef struct xr_io_checker_data_s xr_io_checker_data_t;
 

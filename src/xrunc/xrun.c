@@ -35,6 +35,8 @@ void xrn_global_option_set_init(xrn_global_config_set_t *cfg) {
 
   xr_option_t *xropt = &cfg->option;
   xr_option_init(xropt);
+  xropt->limit = XR_LIMIT_UNLIMITED;
+  xropt->limit_per_process = XR_LIMIT_UNLIMITED;
 
   xr_entry_t *entry = &cfg->entry;
   xr_entry_init(entry);

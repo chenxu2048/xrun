@@ -131,7 +131,7 @@ bool xrn_config_parse_calls(xr_json_t *entries, bool *calls,
   return true;
 }
 
-#define __xrn_parse_failed(cfg) (xr_json_free(cfg), false)
+#define __xrn_parse_failed(cfg) (xr_json_free(cfg), fclose(config), false)
 
 bool xrn_config_parse(const char *config_path, xr_option_t *option,
                       xr_string_t *error) {
@@ -142,6 +142,7 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
   }
   xr_json_t *cfg_json = xr_json_parse(config, error);
   if (cfg_json == NULL) {
+    fclose(config);
     return false;
   }
 
@@ -247,3 +248,5 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
   xr_json_free(cfg_json);
   return true;
 }
+
+#undef __xrn_parse_failed
