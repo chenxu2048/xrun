@@ -10,7 +10,7 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
                            xr_trace_trap_t *trap);
 
 void xr_file_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                            xr_tracer_result_t *result);
+                            xr_result_t *result);
 
 void xr_file_checker_delete(xr_checker_t *checker);
 

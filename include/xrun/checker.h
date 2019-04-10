@@ -7,7 +7,7 @@ struct xr_checker_s;
 typedef struct xr_checker_s xr_checker_t;
 
 typedef struct xr_tracer_s xr_tracer_t;
-typedef struct xr_tracer_result_s xr_tracer_result_t;
+typedef struct xr_result_s xr_result_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
 typedef struct xr_option_s xr_option_t;
 
@@ -25,7 +25,7 @@ typedef bool xr_checker_check_f(xr_checker_t *checker, xr_tracer_t *tracer,
                                 xr_trace_trap_t *trap);
 
 typedef void xr_checker_result_f(xr_checker_t *checker, xr_tracer_t *tracer,
-                                 xr_tracer_result_t *result);
+                                 xr_result_t *result);
 
 typedef bool xr_checker_setup_f(xr_checker_t *checker, xr_option_t *option);
 

@@ -10,7 +10,7 @@
 #include "xrun/utils/time.h"
 
 typedef struct xr_tracer_s xr_tracer_t;
-typedef struct xr_tracer_result_s xr_tracer_result_t;
+typedef struct xr_result_s xr_result_t;
 typedef struct xr_option_s xr_option_t;
 typedef struct xr_trace_trap_s xr_trace_trap_t;
 typedef struct xr_error_s xr_error_t;
@@ -102,10 +102,10 @@ static inline void xr_tracer_init(xr_tracer_t *tracer, const char *name) {
 bool xr_tracer_add_checker(xr_tracer_t *tracer, xr_checker_id_t cid);
 
 bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
-                     xr_tracer_result_t *result);
+                     xr_result_t *result);
 
 bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option);
-bool xr_tracer_check(xr_tracer_t *tracer, xr_tracer_result_t *result,
+bool xr_tracer_check(xr_tracer_t *tracer, xr_result_t *result,
                      xr_trace_trap_t *trap);
 void xr_tracer_clean(xr_tracer_t *tracer);
 

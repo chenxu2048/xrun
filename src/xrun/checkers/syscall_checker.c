@@ -37,7 +37,7 @@ bool xr_syscall_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 }
 
 void xr_syscall_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                               xr_tracer_result_t *result) {
+                               xr_result_t *result) {
   result->status = XR_RESULT_CALLDENY;
   result->ecall = xr_syscall_checker_data(checker)->ecall;
 }

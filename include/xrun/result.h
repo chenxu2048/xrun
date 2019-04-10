@@ -3,8 +3,9 @@
 
 #include "xrun/utils/path.h"
 #include "xrun/utils/string.h"
+#include "xrun/utils/time.h"
 
-typedef struct xr_tracer_result_s xr_tracer_result_t;
+typedef struct xr_result_s xr_result_t;
 typedef enum xr_tracer_code_e xr_tracer_code_t;
 
 enum xr_tracer_code_e {
@@ -37,13 +38,14 @@ enum xr_tracer_code_e {
 typedef struct xr_tracer_process_result_s xr_tracer_process_result_t;
 struct xr_tracer_process_result_s {
   long memory;
-  long time;
+  xr_time_t time;
   int nthread;
-  int nfiles;
+  int nfile;
+  long long io_read, io_write;
   xr_tracer_process_result_t *next;
 };
 
-struct xr_tracer_result_s {
+struct xr_result_s {
   xr_tracer_code_t status;
   int nprocess;
   union {
@@ -59,12 +61,12 @@ struct xr_tracer_result_s {
   xr_tracer_process_result_t *error_process;
 };
 
-static inline void xr_tracer_result_init(xr_tracer_result_t *result) {
-  memset(result, 0, sizeof(xr_tracer_result_t));
+static inline void xr_result_init(xr_result_t *result) {
+  memset(result, 0, sizeof(xr_result_t));
   result->status = XR_RESULT_UNKNOWN;
 }
 
-static inline void xr_tracer_result_delete(xr_tracer_result_t *result) {
+static inline void xr_result_delete(xr_result_t *result) {
   while (result->exited_processes != NULL) {
     xr_tracer_process_result_t *process = result->exited_processes;
     result->exited_processes = process->next;

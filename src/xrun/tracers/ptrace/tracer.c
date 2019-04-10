@@ -5,6 +5,7 @@
 
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -82,6 +83,10 @@ static inline void xr_ptrace_try_cloexec() {
 static inline void do_exec(xr_tracer_t *tracer, xr_entry_t *entry) {
   if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1) {
     _XR_TRACER_ERROR(tracer, "PTRACE_TRACEME error.");
+    return;
+  }
+  if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
+    _XR_TRACER_ERROR(tracer, "prctl PR_SET_PDEATHSIG failed.");
     return;
   }
   for (int i = 0; i < 3; ++i) {

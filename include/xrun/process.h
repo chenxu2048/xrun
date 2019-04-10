@@ -11,6 +11,7 @@ typedef struct xr_process_s xr_process_t;
 struct xr_process_s {
   int pid;
 
+  int nfile;
   int memory;
   xr_time_t time;
 
@@ -52,6 +53,7 @@ static inline void xr_process_remove_thread(xr_process_t *process,
 static inline void xr_process_init(xr_process_t *process) {
   xr_list_init(&process->processes);
   xr_list_init(&process->threads);
+  process->nfile = 0;
   process->nthread = 0;
 }
 static inline void xr_thread_init(xr_thread_t *thread) {

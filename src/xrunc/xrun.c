@@ -329,7 +329,7 @@ int main(int argc, char *argv[]) {
   }
 
   xr_tracer_t tracer;
-  xr_tracer_result_t result;
+  xr_result_t result;
   xr_tracer_ptrace_init(&tracer, "xrunc_tracer");
 
   xr_checker_id_t checkers[5] = {XR_CHECKER_FILE, XR_CHECKER_RESOURCE,
@@ -347,7 +347,7 @@ int main(int argc, char *argv[]) {
     retval = 1;
     goto xrn_tracer_failed;
   }
-  xr_tracer_result_init(&result);
+  xr_result_init(&result);
   bool res = xr_tracer_trace(&tracer, &cfg.entry, &result);
   if (res == false) {
     xr_error_tostring(&tracer.error, &cfg.error);

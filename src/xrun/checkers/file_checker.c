@@ -234,7 +234,7 @@ bool xr_file_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
 }
 
 void xr_file_checker_result(xr_checker_t *checker, xr_tracer_t *tracer,
-                            xr_tracer_result_t *result) {
+                            xr_result_t *result) {
   result->status = XR_RESULT_PATHDENY;
   xr_file_checker_data_t *data = xr_file_checker_data(checker);
   xr_string_copy(&result->epath, data->epath);
