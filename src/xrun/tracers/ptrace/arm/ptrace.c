@@ -38,7 +38,7 @@ static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
   if (inst == XR_ARM_EABI_INST) {
     return XR_COMPAT_SYSCALL_ARM_EABI;
   }
-  return ((inst & XR_ARM_OABI_MASK) == XR_ARM_EABI_INST)
+  return ((inst & ~XR_ARM_OABI_MASK) == XR_ARM_EABI_INST)
            ? XR_COMPAT_SYSCALL_ARM_OABI
            : XR_COMPAT_SYSCALL_INVALID;
 }
