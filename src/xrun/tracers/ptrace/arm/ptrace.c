@@ -82,7 +82,7 @@ bool xr_ptrace_tracer_poke_syscall(int pid, long arg, int index, int compat) {
   if (index <= 0 || index > 6) {
     return false;
   }
-  return ptrace(PTRACE_PEEKUSER, pid, index * sizeof(long), arg) == 0;
+  return ptrace(PTRACE_POKEUSER, pid, index * sizeof(long), arg) == 0;
 }
 
 #endif
