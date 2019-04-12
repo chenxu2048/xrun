@@ -93,7 +93,7 @@ void xr_ptrace_tracer_delete(xr_tracer_t *tracer) {
 static inline bool xr_ptrace_tracer_setopt(int pid) {
   return ptrace(PTRACE_SETOPTIONS, pid, NULL,
                 PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE |
-                  PTRACE_O_TRACEVFORK | PTRACE_O_TRACEFORK) == -1;
+                  PTRACE_O_TRACEVFORK | PTRACE_O_TRACEFORK) == 0;
 }
 
 // we try to set close on exec for any other file description
