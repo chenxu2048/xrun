@@ -291,7 +291,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
    (syscall) == XR_SYSCALL_VFORK)
 
 static inline bool xr_ptrace_tracer_cloning(xr_tracer_t *tracer,
-                                            xr_trace_trap_t *trap) {
+                                            xr_trace_trap_t *trap, int compat) {
   xr_tracer_ptrace_data_t *data = xr_tracer_ptrace_data(tracer);
   xr_tracer_ptrace_pending_clone_t *pending =
     _XR_NEW(xr_tracer_ptrace_pending_clone_t);
@@ -302,12 +302,12 @@ static inline bool xr_ptrace_tracer_cloning(xr_tracer_t *tracer,
   pending->hack_val = trap->syscall_info.args[XR_CLONE_UNUSED_ARG];
   // hacking here
   return xr_ptrace_tracer_poke_syscall(pending->caller, pending->caller,
-                                       XR_CLONE_UNUSED_ARG,
-                                       trap->thread->process->compat);
+                                       XR_CLONE_UNUSED_ARG, compat);
 }
 
 static inline bool xr_ptrace_tracer_clone_return(xr_tracer_t *tracer,
-                                                 xr_trace_trap_t *trap) {
+                                                 xr_trace_trap_t *trap,
+                                                 int compat) {
   xr_tracer_ptrace_data_t *data = xr_tracer_ptrace_data(tracer);
   for (xr_tracer_ptrace_pending_clone_t *pending = data->pending, *prev = NULL;
        pending != NULL; prev = pending, pending = prev->next) {
@@ -331,7 +331,7 @@ static inline bool xr_ptrace_tracer_clone_return(xr_tracer_t *tracer,
       // recover to tracee
       return xr_ptrace_tracer_poke_syscall(
         trap->thread->tid, trap->syscall_info.args[XR_CLONE_UNUSED_ARG],
-        XR_CLONE_UNUSED_ARG, trap->thread->process->compat);
+        XR_CLONE_UNUSED_ARG, compat);
     }
   }
   return false;
@@ -389,6 +389,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
       xr_thread_init(trap->thread);
       trap->thread->tid = pid;
       trap->thread->process = NULL;
+      thread->syscall_status = XR_THREAD_CALLIN;
     } else {
       compat = trap->thread->process->compat;
     }
@@ -418,7 +419,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
       trap->thread->process->compat = XR_COMPAT_SYSCALL_INVALID;
     } else if (XR_IS_CLONE(trap->syscall_info.syscall)) {
       if (trap->thread->syscall_status == XR_THREAD_CALLIN &&
-          xr_ptrace_tracer_cloning(tracer, trap) == false) {
+          xr_ptrace_tracer_cloning(tracer, trap, compat) == false) {
         // hack on cloning failed
         return _XR_TRACER_ERROR(tracer,
                                 "could not hack syscall argument while "
@@ -441,7 +442,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
             trap->syscall_info.clone_caller = caller;
           }
         }
-        if (xr_ptrace_tracer_clone_return(tracer, trap) == false) {
+        if (xr_ptrace_tracer_clone_return(tracer, trap, compat) == false) {
           return _XR_TRACER_ERROR(
             tracer,
             "could not recover hacked syscall argument while clone/fork/vfork "

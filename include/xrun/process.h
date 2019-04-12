@@ -58,7 +58,6 @@ static inline void xr_process_init(xr_process_t *process) {
 }
 static inline void xr_thread_init(xr_thread_t *thread) {
   xr_list_init(&thread->threads);
-  thread->syscall_status = XR_THREAD_CALLOUT;
   thread->tid = 0;
 }
 void xr_process_delete(xr_process_t *process);
