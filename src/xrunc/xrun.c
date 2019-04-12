@@ -436,6 +436,7 @@ int main(int argc, char *argv[]) {
     xr_string_format(&cfg.error, "can not get cwd.");
     goto xrn_set_entry_error;
   }
+  cfg.entry.pwd.length = strlen(cfg.entry.pwd.string);
 
   xr_tracer_t tracer;
   xr_result_t result;

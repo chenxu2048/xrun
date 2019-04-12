@@ -99,7 +99,7 @@ static inline bool __do_process_open_file(xr_checker_t *checker,
     xr_path_join(&abs_path, path);
     xr_path_abs(&abs_path);
     xr_string_swap(&abs_path, path);
-    xr_path_delete(path);
+    xr_path_delete(&abs_path);
   }
   xr_file_t *file = _XR_NEW(xr_file_t);
   xr_file_init(file);

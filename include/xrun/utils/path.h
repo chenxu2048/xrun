@@ -63,7 +63,7 @@ static inline void xr_path_abs(xr_path_t *path) {
       break;
     }
   }
-  for (int i = prev_slash; i < path->length; ++i) {
+  for (int i = prev_slash; i <= path->length; ++i) {
     const int level_length = i - prev_slash;
     if (path->string[i] != '/' && path->string[i] != 0) {
       continue;
@@ -75,7 +75,7 @@ static inline void xr_path_abs(xr_path_t *path) {
     } else if ((level_length == 3 &&
                 __xr_path_is_parent_dir(path, prev_slash)) &&
                (abs_end != 0 || abs_end != 1 ||
-                strncmp(path->string + abs_end - 3, "../", 3))) {
+                strncmp(path->string + abs_end - 2, "..", 2))) {
       // current level is ../ and can go to parent.
       //
       // at top (abs_end == 0), at root (abs_end == 1) and at relative parent

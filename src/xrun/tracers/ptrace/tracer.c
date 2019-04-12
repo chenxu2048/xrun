@@ -252,7 +252,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
   if (thread == NULL) {
     return _XR_TRACER_ERROR(tracer, "ptrace create a process error.");
   }
-
+  xr_string_copy(xr_fs_pwd(&thread->fs), &entry->pwd);
   if (ptrace(PTRACE_SYSCALL, fork_ret, NULL, NULL) == -1) {
     return _XR_TRACER_ERROR(tracer, "ptrace tracer PTRACE_SYSCALL failed.");
   }
@@ -520,7 +520,7 @@ bool xr_ptrace_tracer_strcpy(xr_tracer_t *tracer, int pid, void *address,
   // aligned address in kernel
   long addr = (long)address & __xr_address_align;
   // offset of needed data
-  size_t offset = addr - (long)address;
+  size_t offset = (long)address - addr;
   long data_ = 0;
   char *data = (char *)&data_;
   while (true) {

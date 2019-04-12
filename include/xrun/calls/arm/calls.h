@@ -7,7 +7,7 @@
 
 #define XR_COMPAT_SYSCALL_ARM_EABI 1
 #define XR_COMPAT_SYSCALL_ARM_OABI 2
-#define XR_COMPAT_SYSCALL_DEFAULT XR_COMPAT_SYSCALL_EABI
+#define XR_COMPAT_SYSCALL_DEFAULT XR_COMPAT_SYSCALL_ARM_EABI
 
 static inline int xr_calls_convert_impl(const char *name, int compat) {
   switch (compat) {
