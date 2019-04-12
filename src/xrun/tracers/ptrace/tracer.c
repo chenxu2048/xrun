@@ -389,7 +389,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
       xr_thread_init(trap->thread);
       trap->thread->tid = pid;
       trap->thread->process = NULL;
-      thread->syscall_status = XR_THREAD_CALLIN;
+      trap->thread->syscall_status = XR_THREAD_CALLIN;
     } else {
       compat = trap->thread->process->compat;
     }
