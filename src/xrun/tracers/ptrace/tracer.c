@@ -386,9 +386,6 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     int compat = XR_COMPAT_SYSCALL_INVALID;
     if (trap->thread == NULL) {
       // assume cloning
-      if (xr_ptrace_tracer_setopt(pid) == false) {
-        return false;
-      }
       trap->thread = _XR_NEW(xr_thread_t);
       xr_thread_init(trap->thread);
       trap->thread->tid = pid;
@@ -437,6 +434,9 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
                                     pid);
           } else {
             xr_process_add_thread(caller->process, trap->thread);
+            if (xr_ptrace_tracer_setopt(pid) == false) {
+              return false;
+            }
             trap->syscall_info.clone_caller = caller;
           }
         }
