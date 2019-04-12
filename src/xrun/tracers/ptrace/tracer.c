@@ -90,6 +90,12 @@ void xr_ptrace_tracer_delete(xr_tracer_t *tracer) {
   free(tracer->tracer_data);
 }
 
+static inline bool xr_ptrace_tracer_setopt(int pid) {
+  return ptrace(PTRACE_SETOPTIONS, pid, NULL,
+                PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE |
+                  PTRACE_O_TRACEVFORK | PTRACE_O_TRACEFORK) == -1;
+}
+
 // we try to set close on exec for any other file description
 static inline void xr_ptrace_try_cloexec() {
   struct rlimit limit;
@@ -240,9 +246,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
   }
 
   // set options here
-  if (ptrace(PTRACE_SETOPTIONS, fork_ret, NULL,
-             PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE | PTRACE_O_TRACEVFORK |
-               PTRACE_O_TRACEFORK) == -1) {
+  if (xr_ptrace_tracer_setopt(fork_ret) == false) {
     return _XR_TRACER_ERROR(
       tracer, "ptrace tracer PTRACE_SETOPTIONS for process %d failed.",
       fork_ret);
@@ -372,16 +376,19 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   if (WIFEXITED(status)) {
     trap->trap = XR_TRACE_TRAP_EXIT;
     trap->exit_code = WEXITSTATUS(status);
-  } else if (WSTOPSIG(status) != (SIGTRAP | 0x80)) {
+  } else if (WIFSIGNAL(status)) {
     trap->trap = XR_TRACE_TRAP_SIGNAL;
     trap->stop_signal = WSTOPSIG(status);
-  } else {
+  } else if (WIFSTOPPED(status)) {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
     __flip_thread_syscall_status(trap->thread);
 
     int compat = XR_COMPAT_SYSCALL_INVALID;
     if (trap->thread == NULL) {
       // assume cloning
+      if (xr_ptrace_tracer_setopt(pid) == false) {
+        return false;
+      }
       trap->thread = _XR_NEW(xr_thread_t);
       xr_thread_init(trap->thread);
       trap->thread->tid = pid;
