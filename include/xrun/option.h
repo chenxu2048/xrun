@@ -63,13 +63,16 @@ struct xr_access_entry_s {
 };
 
 struct xr_access_list_s {
+  xr_access_type_t type;
   size_t nentry;
   size_t capacity;
   xr_access_entry_t *entries;
 };
 
-static inline void xr_access_list_init(xr_access_list_t *alist) {
+static inline void xr_access_list_init(xr_access_list_t *alist,
+                                       xr_access_type_t type) {
   memset(alist, 0, sizeof(xr_access_list_t));
+  alist->type = type;
 }
 
 static inline void xr_access_list_delete(xr_access_list_t *alist) {
@@ -83,8 +86,7 @@ static inline void xr_access_list_delete(xr_access_list_t *alist) {
 
 void xr_access_list_append(xr_access_list_t *alist, const char *path,
                            size_t length, long flags, xr_access_mode_t mode);
-bool xr_access_list_check(xr_access_list_t *alist, xr_path_t *path, long flags,
-                          xr_access_type_t type);
+bool xr_access_list_check(xr_access_list_t *alist, xr_path_t *path, long flags);
 
 typedef enum xr_access_trigger_mode_s xr_access_trigger_mode_t;
 enum xr_access_trigger_mode_s {
@@ -105,8 +107,8 @@ struct xr_option_s {
 
 static inline void xr_option_init(xr_option_t *option) {
   memset(option->calls, 0, sizeof(bool) * XR_SYSCALL_MAX);
-  xr_access_list_init(&option->files);
-  xr_access_list_init(&option->directories);
+  xr_access_list_init(&option->files, XR_ACCESS_TYPE_FILE);
+  xr_access_list_init(&option->directories, XR_ACCESS_TYPE_DIR);
 }
 
 static inline void xr_option_delete(xr_option_t *option) {

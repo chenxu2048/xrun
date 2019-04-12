@@ -109,7 +109,8 @@ static inline void xr_string_concat(xr_string_t *head, xr_string_t *tail) {
  * @return bool
  */
 static inline bool xr_string_start_with(xr_string_t *str, xr_string_t *head) {
-  return strncmp(str->string, head->string, str->length) == 0;
+  return head->length < str->length &&
+         strncmp(str->string, head->string, head->length) == 0;
 }
 
 static inline bool xr_string_end_with(xr_string_t *str, xr_string_t *tail) {

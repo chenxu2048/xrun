@@ -44,9 +44,8 @@ bool xr_file_checker_setup(xr_checker_t *checker, xr_option_t *option) {
 static inline bool __do_file_access_check(xr_checker_t *checker,
                                           xr_path_t *path, long flags) {
   xr_file_checker_data_t *data = xr_file_checker_data(checker);
-  bool result =
-    xr_access_list_check(data->files, path, flags, XR_ACCESS_TYPE_FILE) ||
-    xr_access_list_check(data->files, path, flags, XR_ACCESS_TYPE_DIR);
+  bool result = xr_access_list_check(data->files, path, flags) ||
+                xr_access_list_check(data->directories, path, flags);
   if (result == false) {
     xr_file_checker_data(checker)->epath = path;
     xr_file_checker_data(checker)->flags = flags;

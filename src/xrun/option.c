@@ -30,15 +30,31 @@ void xr_access_list_append(xr_access_list_t *alist, const char *path,
   alist->entries[alist->nentry].mode = mode;
   alist->nentry++;
 }
-bool xr_access_list_check(xr_access_list_t *alist, xr_path_t *path, long flags,
-                          xr_access_type_t type) {
+
+static inline bool xr_access_list_check_dir(xr_access_list_t *alist,
+                                            xr_path_t *path, long flags) {
   for (int i = 0; i < alist->nentry; ++i) {
-    bool path_match = ((type == XR_ACCESS_TYPE_DIR)
-                         ? xr_path_contains(&alist->entries[i].path, path)
-                         : xr_string_equal(&alist->entries[i].path, path));
-    if (path_match && __do_file_flags_check(&alist->entries[i], flags)) {
+    if (xr_path_contains(&alist->entries[i].path, path) &&
+        __do_file_flags_check(&alist->entries[i], flags)) {
       return true;
     }
   }
   return false;
+}
+
+static inline bool xr_access_list_check_file(xr_access_list_t *alist,
+                                             xr_path_t *path, long flags) {
+  for (int i = 0; i < alist->nentry; ++i) {
+    if (xr_string_equal(&alist->entries[i].path, path) &&
+        __do_file_flags_check(&alist->entries[i], flags)) {
+      return true;
+    }
+  }
+  return false;
+}
+bool xr_access_list_check(xr_access_list_t *alist, xr_path_t *path,
+                          long flags) {
+  return alist->type == XR_ACCESS_TYPE_DIR
+           ? xr_access_list_check_dir(alist, path, flags)
+           : xr_access_list_check_file(alist, path, flags);
 }

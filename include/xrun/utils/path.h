@@ -37,7 +37,13 @@ static inline bool xr_path_is_relative(xr_path_t *path) {
 }
 
 static inline bool xr_path_contains(xr_path_t *parent, xr_path_t *child) {
-  return xr_string_start_with(child, parent);
+  if (xr_string_start_with(child, parent) == false) {
+    return false;
+  }
+  if (parent->string[parent->length - 1] == '/') {
+    return child->string[parent->length - 1] == '/';
+  }
+  return child->string[parent->length] == '/';
 }
 
 #define __xr_path_is_parent_dir(path, anchor) \
@@ -49,8 +55,8 @@ static inline bool xr_path_contains(xr_path_t *parent, xr_path_t *child) {
  * @@path
  */
 static inline void xr_path_abs(xr_path_t *path) {
-  int abs_end = 0, prev_slash = 0;
-  for (int i = 0; i < path->length; ++i) {
+  size_t abs_end = 0, prev_slash = 0;
+  for (size_t i = 0; i < path->length; ++i) {
     if (path->string[i] == '/') {
       prev_slash = i;
       if (prev_slash == 1 && path->string[0] == '.') {
@@ -63,8 +69,8 @@ static inline void xr_path_abs(xr_path_t *path) {
       break;
     }
   }
-  for (int i = prev_slash; i <= path->length; ++i) {
-    const int level_length = i - prev_slash;
+  for (size_t i = prev_slash; i <= path->length; ++i) {
+    const size_t level_length = i - prev_slash;
     if (path->string[i] != '/' && path->string[i] != 0) {
       continue;
     } else if ((level_length == 2 && path->string[prev_slash + 1] == '.') ||
@@ -80,7 +86,7 @@ static inline void xr_path_abs(xr_path_t *path) {
       //
       // at top (abs_end == 0), at root (abs_end == 1) and at relative parent
       // (../) can not go to parent.
-      for (int j = abs_end - 1; j >= 0; --j) {
+      for (size_t j = abs_end - 1; j >= 0; --j) {
         if (j <= 1) {
           abs_end = 0;
         }
@@ -92,8 +98,9 @@ static inline void xr_path_abs(xr_path_t *path) {
     } else {
       // keep current level and copy it.
       if (abs_end != prev_slash + 1) {
-        strncpy(path->string + abs_end, path->string + prev_slash + 1,
-                level_length);
+        for (size_t j = 0; j < level_length; ++j) {
+          path->string[abs_end + j] = path->string[prev_slash + j + 1];
+        }
       }
       abs_end += level_length;
     }

@@ -160,7 +160,7 @@ void xr_json_free(xr_json_t *json) {
       xr_json_array_free(json);
       break;
     default:
-      return;
+      break;
   }
   free(json);
 }
