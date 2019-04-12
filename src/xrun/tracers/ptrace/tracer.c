@@ -381,7 +381,6 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     trap->stop_signal = WSTOPSIG(status);
   } else if (WIFSTOPPED(status)) {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
-    __flip_thread_syscall_status(trap->thread);
 
     int compat = XR_COMPAT_SYSCALL_INVALID;
     if (trap->thread == NULL) {
@@ -393,6 +392,8 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     } else {
       compat = trap->thread->process->compat;
     }
+
+    __flip_thread_syscall_status(trap->thread);
 
     if (compat == XR_COMPAT_SYSCALL_INVALID) {
       compat = xr_ptrace_tracer_syscall_compat(pid);
