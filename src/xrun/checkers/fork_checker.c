@@ -56,8 +56,9 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   int syscall = trap->syscall_info.syscall;
   bool fork = false, clone_files = false, clone_fs = false;
 
-  if (syscall != XR_SYSCALL_CLONE || syscall != XR_SYSCALL_FORK ||
-      syscall != XR_SYSCALL_VFORK || tid != 0) {
+  if ((syscall != XR_SYSCALL_CLONE && syscall != XR_SYSCALL_FORK &&
+       syscall != XR_SYSCALL_VFORK) ||
+      tid != 0) {
     // not a clone, fork, vfork syscall
     // or, caller syscall return.
     // checking
