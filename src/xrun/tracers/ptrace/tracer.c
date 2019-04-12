@@ -297,12 +297,9 @@ static inline bool xr_ptrace_tracer_cloning(xr_tracer_t *tracer,
   pending->hit = 0;
   pending->hack_val = trap->syscall_info.args[XR_CLONE_UNUSED_ARG];
   // hacking here
-  if (xr_ptrace_tracer_poke_syscall(pending->caller, pending->caller,
-                                    XR_CLONE_UNUSED_ARG,
-                                    trap->thread->process->compat)) {
-    return false;
-  }
-  return true;
+  return xr_ptrace_tracer_poke_syscall(pending->caller, pending->caller,
+                                       XR_CLONE_UNUSED_ARG,
+                                       trap->thread->process->compat);
 }
 
 static inline bool xr_ptrace_tracer_clone_return(xr_tracer_t *tracer,
