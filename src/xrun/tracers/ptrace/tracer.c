@@ -376,7 +376,7 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   if (WIFEXITED(status)) {
     trap->trap = XR_TRACE_TRAP_EXIT;
     trap->exit_code = WEXITSTATUS(status);
-  } else if (WIFSIGNAL(status)) {
+  } else if (WIFSIGNALED(status)) {
     trap->trap = XR_TRACE_TRAP_SIGNAL;
     trap->stop_signal = WSTOPSIG(status);
   } else if (WIFSTOPPED(status)) {
