@@ -64,6 +64,7 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
       }
       if (xr_tracer_check(tracer, result, &trap) == false) {
         ok = false;
+        xr_collect_process(trap.thread->process, &result->error_process);
         break;
       }
 
@@ -99,7 +100,8 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
   }
   result->nprocess = tracer->nprocess;
   xr_tracer_clean(tracer);
-  return result->status == XR_RESULT_OK;
+  return result->status != XR_RESULT_UNKNOWN &&
+         result->status != XR_RESULT_TRACERERR;
 }
 
 bool xr_tracer_setup(xr_tracer_t *tracer, xr_option_t *option) {

@@ -1,14 +1,13 @@
 #define _GNU_SOURCE
 
 #include <ctype.h>
-
 #include <stdlib.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "xrunc/file_limit.h"
+#include "xrunc/access.h"
 
 struct xrn_file_flag {
   long flag;
@@ -79,7 +78,7 @@ static const struct xrn_file_flag xrn_file_flags[] = {
 const static size_t xrn_file_flag_num =
   sizeof(xrn_file_flags) / sizeof(struct xrn_file_flag);
 
-bool xrn_file_limit_flag_name(char *name, size_t len, long *flag) {
+bool xrn_access_flag_name(char *name, size_t len, long *flag) {
   for (int i = 0; i < xrn_file_flag_num; ++i) {
     if (xrn_file_flags[i].len == len &&
         strncmp(xrn_file_flags[i].name, name, len) == 0) {
@@ -90,7 +89,7 @@ bool xrn_file_limit_flag_name(char *name, size_t len, long *flag) {
   return false;
 }
 
-bool xrn_file_limit_read_flags(char *names, long *flags) {
+bool xrn_access_read_flags(char *names, long *flags) {
   int nflag = 0;
   char *end = names;
   if (isdigit(*names)) {
@@ -101,7 +100,7 @@ bool xrn_file_limit_read_flags(char *names, long *flags) {
   char *start = names;
   while (true) {
     if (*end == '+' || *end == '\0') {
-      if (xrn_file_limit_flag_name(start, end - start, &flag)) {
+      if (xrn_access_flag_name(start, end - start, &flag)) {
         *flags |= flag;
         nflag++;
       } else {
@@ -117,7 +116,7 @@ bool xrn_file_limit_read_flags(char *names, long *flags) {
   return nflag != 0;
 }
 
-bool xrn_file_access_read(xr_access_list_t *alist, char *path) {
+bool xrn_access_read(xr_access_list_t *alist, char *path) {
   char *flag = path;
   xr_access_mode_t mode = XR_ACCESS_MODE_FLAG_MATCH;
   while (*flag != '\0') {
@@ -138,7 +137,7 @@ bool xrn_file_access_read(xr_access_list_t *alist, char *path) {
     flag++;
   }
   long flags = 0;
-  if (xrn_file_limit_read_flags(flag, &flags) == false) {
+  if (xrn_access_read_flags(flag, &flags) == false) {
     return false;
   }
   xr_access_list_append(alist, path, path_len, flags, mode);

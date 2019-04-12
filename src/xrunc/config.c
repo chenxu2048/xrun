@@ -2,8 +2,8 @@
 #include "xrun/utils/json.h"
 #include "xrun/utils/string.h"
 
+#include "xrunc/access.h"
 #include "xrunc/config.h"
-#include "xrunc/file_limit.h"
 
 #define XRN_CONFIG_PARSE_ERROR_BUFFER 64
 
@@ -46,8 +46,7 @@ bool xrn_config_parse_access(xr_json_t *entry, const char *json_path,
       path = _XR_JSON_STRING(value);
     } else if (strcmp("flags", key) == 0) {
       if (XR_JSON_IS_STRING(value)) {
-        if (xrn_file_limit_read_flags(_XR_JSON_STRING(value), &flags) ==
-            false) {
+        if (xrn_access_read_flags(_XR_JSON_STRING(value), &flags) == false) {
           xr_string_format(error, "%s.flags(%s) is invalid.", json_path,
                            _XR_JSON_STRING(value));
           return false;

@@ -58,7 +58,7 @@ struct xr_result_s {
   int epid, etid;
   xr_tracer_process_result_t *exited_processes;
   xr_tracer_process_result_t *aborted_processes;
-  xr_tracer_process_result_t *error_process;
+  xr_tracer_process_result_t error_process;
 };
 
 static inline void xr_result_init(xr_result_t *result) {
@@ -77,7 +77,6 @@ static inline void xr_result_delete(xr_result_t *result) {
     result->aborted_processes = process->next;
     free(process);
   }
-  free(result->error_process);
   if (result->status == XR_RESULT_PATHDENY ||
       result->status == XR_RESULT_WRITEOUT ||
       result->status == XR_RESULT_READOUT) {
