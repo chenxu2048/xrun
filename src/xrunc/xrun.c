@@ -425,6 +425,17 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < 3; ++i) {
     cfg.entry.stdio[i] = i;
   }
+  xr_string_grow(&cfg.entry.pwd, XR_PATH_MAX);
+  int retry = 4;
+  while (getcwd(cfg.entry.pwd.string, cfg.entry.pwd.capacity) == NULL &&
+         retry--) {
+    xr_string_grow(&cfg.entry.pwd, cfg.entry.pwd.capacity * 2);
+  }
+  if (retry == 0) {
+    retval = 1;
+    xr_string_format(&cfg.error, "can not get cwd.");
+    goto xrn_set_entry_error;
+  }
 
   xr_tracer_t tracer;
   xr_result_t result;
@@ -458,8 +469,9 @@ int main(int argc, char *argv[]) {
   }
 xrn_tracer_failed:
   xr_tracer_delete(&tracer);
-xrn_parse_option_error:
+xrn_set_entry_error:
   free(cfg.entry.argv);
+xrn_parse_option_error:
   xrn_global_option_set_delete(&cfg);
   return retval;
 }

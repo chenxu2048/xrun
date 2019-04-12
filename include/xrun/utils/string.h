@@ -10,8 +10,8 @@
 typedef struct xr_string_s xr_string_t;
 
 struct xr_string_s {
-  int length;
-  int capacity;
+  size_t length;
+  size_t capacity;
   char *string;
 };
 
