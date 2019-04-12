@@ -75,7 +75,10 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
           xr_result_process(result, trap_process, trap.exit_code);
           xr_list_del(&trap_process->processes);
           xr_process_delete(trap_process);
+          free(trap_process);
         }
+        xr_thread_delete(trap.thread);
+        free(trap.thread);
         // a exited thread/process do not step again.
         continue;
       }
