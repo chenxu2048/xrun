@@ -68,6 +68,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
       xr_fork_checker_data(checker)->code = XR_RESULT_CLONEDENY;
       return false;
     }
+    return true;
   } else if (syscall == XR_SYSCALL_CLONE) {
     int clone_flags = trap->syscall_info.args[CLONE_FLAG_ARGS(syscall)];
     if (clone_flags & CLONE_UNTRACED) {
