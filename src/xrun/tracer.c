@@ -92,6 +92,10 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
     _xr_list_for_each_safe(&tracer->processes, cur_process, tmp_process) {
       xr_process_t *process =
         xr_list_entry(cur_process, xr_process_t, processes);
+      xr_thread_t *thread;
+      _xr_list_for_each_entry(&process->threads, thread, xr_thread_t, threads) {
+        _XR_CALLP(tracer, kill, thread->tid);
+      }
       _XR_CALLP(tracer, kill, process->pid);
       xr_result_process(result, process, XR_RESULT_PROCESS_EXIT_ABORT);
     }
