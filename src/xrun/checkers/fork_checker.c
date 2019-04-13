@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 #include <sched.h>
 
-#define CLONE_FLAG_ARGS(call) 1
+#define CLONE_FLAG_ARGS(call) 0
 
 #include "xrun/calls.h"
 #include "xrun/checkers/fork_checker.h"
