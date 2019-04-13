@@ -211,16 +211,21 @@ static inline void xr_file_set_remove_file(xr_file_set_t *fset,
 
 #define xr_file_set_set_read(fset, read) \
   do {                                   \
-    (fset)->data->total_read = read;     \
+    if ((fset)->data) {                  \
+      (fset)->data->total_read = read;   \
+    }                                    \
   } while (0)
 
 #define xr_file_set_set_write(fset, write) \
   do {                                     \
-    (fset)->data->total_write = write;     \
+    if ((fset)->data) {                    \
+      (fset)->data->total_write = write;   \
+    }                                      \
   } while (0)
 
-#define xr_file_set_get_read(fset) ((fset)->data->total_read)
-#define xr_file_set_get_write(fset) ((fset)->data->total_write)
+#define xr_file_set_get_read(fset) ((fset)->data ? (fset)->data->total_read : 0)
+#define xr_file_set_get_write(fset) \
+  ((fset)->data ? (fset)->data->total_write : 0)
 
 #define xr_file_set_read(fset, read) \
   xr_file_set_set_read(fset, xr_file_set_get_read(fset) + read)
