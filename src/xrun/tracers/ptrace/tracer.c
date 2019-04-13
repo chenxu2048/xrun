@@ -222,7 +222,7 @@ bool xr_ptrace_tracer_spawn(xr_tracer_t *tracer, xr_entry_t *entry) {
 
   // in child process
   if (fork_ret == 0) {
-    do_rlimit_setup(tracer->option);
+    // do_rlimit_setup(tracer->option);
     do_exec(tracer, entry);
 
     // exec failed. die here
