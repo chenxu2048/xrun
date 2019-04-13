@@ -70,7 +70,7 @@ bool xr_tracer_trace(xr_tracer_t *tracer, xr_entry_t *entry,
 
       if (trap.trap == XR_TRACE_TRAP_EXIT) {
         xr_process_t *trap_process = trap.thread->process;
-        xr_process_remove_thread(trap_process, trap.thread);
+        xr_process_remove_thread(trap_process, trap.thread, false);
         if (xr_list_empty(&trap_process->threads)) {
           xr_result_process(result, trap_process, trap.exit_code);
           xr_list_del(&trap_process->processes);

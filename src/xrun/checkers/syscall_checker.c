@@ -17,7 +17,7 @@ static inline xr_syscall_checker_data_t *xr_syscall_checker_data(
 }
 
 bool xr_syscall_checker_setup(xr_checker_t *checker, xr_option_t *option) {
-  checker->checker_data = option->calls;
+  xr_syscall_checker_data(checker)->calls = option->calls;
   return true;
 }
 
@@ -30,7 +30,7 @@ bool xr_syscall_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   }
 
   data->ecall = trap->syscall_info.syscall;
-  if (XR_SYSCALL_MAX < data->ecall && data->ecall >= 0) {
+  if (XR_SYSCALL_MAX > data->ecall && data->ecall >= 0) {
     return data->calls[data->ecall];
   }
   return false;

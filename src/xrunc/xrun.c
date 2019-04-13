@@ -37,9 +37,6 @@ void xrn_global_option_set_init(xrn_global_config_set_t *cfg) {
 
   xr_option_t *xropt = &cfg->option;
   xr_option_init(xropt);
-  xropt->limit = XR_LIMIT_UNLIMITED;
-  xropt->limit_per_process = XR_LIMIT_UNLIMITED;
-  xropt->nprocess = 1;
 
   xr_entry_t *entry = &cfg->entry;
   xr_entry_init(entry);
@@ -422,6 +419,8 @@ int main(int argc, char *argv[]) {
     goto xrn_parse_option_error;
   }
 
+  xr_option_default(&cfg.option);
+
   xr_string_copy(&cfg.entry.root, &xr_path_slash);
   for (int i = 0; i < 3; ++i) {
     cfg.entry.stdio[i] = i;
@@ -445,7 +444,7 @@ int main(int argc, char *argv[]) {
 
   xr_checker_id_t checkers[5] = {XR_CHECKER_FILE, XR_CHECKER_RESOURCE,
                                  XR_CHECKER_IO, XR_CHECKER_FORK,
-                                 XR_CHECKER_FILE};
+                                 XR_CHECKER_SYSCALL};
   for (int i = 0; i < 5; ++i) {
     if (xr_tracer_add_checker(&tracer, checkers[i]) == false) {
       goto xrn_tracer_failed;

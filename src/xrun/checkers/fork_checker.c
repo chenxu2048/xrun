@@ -100,7 +100,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   // thread will return from fork or clone, so should be XR_THREAD_CALLIN
   if (fork) {
     // fork will create new thread group
-    xr_process_remove_thread(thread->process, thread);
+    xr_process_remove_thread(thread->process, thread, true);
     thread->process = _XR_NEW(xr_process_t);
     xr_process_init(thread->process);
     thread->process->pid = thread->tid;

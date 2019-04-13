@@ -244,6 +244,20 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
     XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.nthread, v);
   }
 
+  xr_json_t *nfork = xr_json_get(cfg_json, "s", "fork");
+  if (nfork) {
+    if (!XR_JSON_IS_INTEGER(nfork)) {
+      xr_string_format(error, "config.fork is not a number.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    long v = XR_JSON_INTEGER(nfork);
+    if (v <= 0) {
+      xr_string_format(error, "config.fork must be greater than 0.");
+      return __xrn_parse_failed(cfg_json);
+    }
+    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->nprocess, v);
+  }
+
   xr_json_free(cfg_json);
   return true;
 }

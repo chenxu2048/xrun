@@ -1,6 +1,7 @@
 #ifndef XR_PROCESS_H
 #define XR_PROCESS_H
 
+#include "xrun/calls.h"
 #include "xrun/files.h"
 #include "xrun/utils/list.h"
 #include "xrun/utils/time.h"
@@ -47,9 +48,12 @@ static inline void xr_process_add_thread(xr_process_t *process,
 }
 
 static inline void xr_process_remove_thread(xr_process_t *process,
-                                            xr_thread_t *thread) {
+                                            xr_thread_t *thread, bool clone) {
   if (process != thread->process) {
     return;
+  }
+  if (clone) {
+    process->nthread--;
   }
   xr_list_del(&thread->threads);
 }
@@ -57,6 +61,7 @@ static inline void xr_process_remove_thread(xr_process_t *process,
 static inline void xr_process_init(xr_process_t *process) {
   xr_list_init(&process->processes);
   xr_list_init(&process->threads);
+  process->compat = XR_COMPAT_SYSCALL_INVALID;
   process->nfile = 0;
   process->nthread = 0;
 }

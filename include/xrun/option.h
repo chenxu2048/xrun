@@ -7,6 +7,8 @@
 #include "xrun/utils/path.h"
 #include "xrun/utils/time.h"
 
+#define XR_NPROC_UNLIMITED INT_MAX
+
 #define XR_IO_UNLIMITED ULLONG_MAX
 #define XR_NTHREAD_UNLIMITED INT_MAX
 #define XR_NFILE_UNLIMITED INT_MAX
@@ -106,10 +108,45 @@ struct xr_option_s {
 };
 
 static inline void xr_option_init(xr_option_t *option) {
-  memset(option->calls, 0, sizeof(bool) * XR_SYSCALL_MAX);
+  memset(option, 0, sizeof(xr_option_t));
   xr_access_list_init(&option->files, XR_ACCESS_TYPE_FILE);
   xr_access_list_init(&option->directories, XR_ACCESS_TYPE_DIR);
 }
+
+#define XR_OPTION_DEFAULT_IF_ZERO(entry, value) \
+  do {                                          \
+    if ((entry) == 0) {                         \
+      (entry) = value;                          \
+    }                                           \
+  } while (0)
+
+#define XR_OPTION_TIME_DEFAULT(time)                       \
+  do {                                                     \
+    if ((time)->user_time == 0 || (time)->sys_time == 0) { \
+      *(time) = XR_TIME_UNLIMITED;                         \
+    }                                                      \
+  } while (0)
+
+#define XR_OPTION_LIMIT_DEFAULT(limit)                                 \
+  do {                                                                 \
+    XR_OPTION_DEFAULT_IF_ZERO((limit)->nthread, XR_NTHREAD_UNLIMITED); \
+    XR_OPTION_DEFAULT_IF_ZERO((limit)->memory, XR_MEMORY_UNLIMITED);   \
+    XR_OPTION_DEFAULT_IF_ZERO((limit)->nfile, XR_NFILE_UNLIMITED);     \
+    XR_OPTION_TIME_DEFAULT(&(limit)->time);                            \
+    XR_OPTION_DEFAULT_IF_ZERO((limit)->nread, XR_IO_UNLIMITED);        \
+    XR_OPTION_DEFAULT_IF_ZERO((limit)->nwrite, XR_IO_UNLIMITED);       \
+  } while (0)
+
+static inline void xr_option_default(xr_option_t *option) {
+  XR_OPTION_DEFAULT_IF_ZERO(option->nprocess, XR_NPROC_UNLIMITED);
+  XR_OPTION_LIMIT_DEFAULT(&option->limit);
+  XR_OPTION_LIMIT_DEFAULT(&option->limit_per_process);
+  option->access_trigger = XR_ACCESS_TRIGGER_MODE_IN;
+}
+
+#undef XR_OPTION_LIMIT_DEFAULT
+#undef XR_OPTION_TIME_DEFAULT
+#undef XR_OPTION_DEFAULT_IF_ZERO
 
 static inline void xr_option_delete(xr_option_t *option) {
   xr_access_list_delete(&option->files);

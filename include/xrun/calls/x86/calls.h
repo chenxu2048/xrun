@@ -19,7 +19,7 @@
 #include "./calls_32.h"
 
 static inline int xr_calls_convert_ia32_impl(const char *name) {
-  for (int i = 0; i <= XR_IA32_SYSCALL_MAX; ++i) {
+  for (int i = 0; i < XR_IA32_SYSCALL_MAX; ++i) {
     if (xr_syscall_table_ia32[i] != NULL &&
         strcmp(name, xr_syscall_table_ia32[i]) == 0) {
       return i;
@@ -33,7 +33,7 @@ static inline int xr_calls_convert_ia32_impl(const char *name) {
 static inline int xr_calls_convert_impl(const char *name, int compat) {
   switch (compat) {
     case XR_COMPAT_SYSCALL_X86_64: {
-      for (int i = 0; i <= XR_SYSCALL_MAX; ++i) {
+      for (int i = 0; i < XR_SYSCALL_MAX; ++i) {
         if (xr_syscall_table_x64[i] != NULL &&
             strcmp(name, xr_syscall_table_x64[i]) == 0) {
           return i;
@@ -42,7 +42,7 @@ static inline int xr_calls_convert_impl(const char *name, int compat) {
       break;
     }
     case XR_COMPAT_SYSCALL_X86_X32: {
-      for (int i = XR_SYSCALL_MAX; i >= 0; --i) {
+      for (int i = XR_SYSCALL_MAX - 1; i >= 0; --i) {
         if (xr_syscall_table_x64[i] != NULL &&
             strcmp(name, xr_syscall_table_x64[i]) == 0) {
           return i;
