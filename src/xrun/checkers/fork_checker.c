@@ -47,8 +47,7 @@ bool xr_fork_checker_setup(xr_checker_t *checker, xr_option_t *option) {
 
 bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
                            xr_trace_trap_t *trap) {
-  if (trap->trap != XR_TRACE_TRAP_SYSCALL ||
-      trap->thread->syscall_status == XR_THREAD_CALLIN) {
+  if (trap->trap != XR_TRACE_TRAP_SYSCALL) {
     return true;
   }
 
@@ -56,18 +55,21 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   int syscall = trap->syscall_info.syscall;
   bool fork = false, clone_files = false, clone_fs = false;
 
-  if (syscall != XR_SYSCALL_CLONE && syscall != XR_SYSCALL_FORK &&
-      syscall != XR_SYSCALL_VFORK) {
-    // not a clone, fork, vfork syscall
-    // or, caller syscall return.
-    // checking
-    return true;
-  } else if (retval != 0) {
+  if (trap->thread->syscall_status == XR_THREAD_CALLIN) {
     if (syscall == XR_SYSCALL_CLONE &&
         (trap->syscall_info.args[CLONE_FLAG_ARGS(syscall)] & CLONE_UNTRACED)) {
       xr_fork_checker_data(checker)->code = XR_RESULT_CLONEDENY;
       return false;
     }
+    return true;
+  }
+
+  if ((syscall != XR_SYSCALL_CLONE && syscall != XR_SYSCALL_FORK &&
+       syscall != XR_SYSCALL_VFORK) ||
+      retval != 0) {
+    // not a clone, fork, vfork syscall
+    // or, caller syscall return.
+    // checking
     return true;
   } else if (syscall == XR_SYSCALL_CLONE) {
     int clone_flags = trap->syscall_info.args[CLONE_FLAG_ARGS(syscall)];

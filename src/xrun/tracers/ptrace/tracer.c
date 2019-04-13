@@ -504,11 +504,6 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     } else if (XR_IS_CLONE(trap->syscall_info.syscall) &&
                trap->thread->syscall_status == XR_THREAD_CALLIN) {
       trap->thread->to_call = trap->syscall_info.syscall;
-      int flag_args = CLONE_FLAG_ARGS(trap->syscall_info.syscall);
-      long clong_flag = trap->syscall_info.args[flag_args];
-      xr_ptrace_tracer_poke_syscall(trap->thread->tid,
-                                    (clong_flag & (~CLONE_UNTRACED)), flag_args,
-                                    trap->thread->process->compat);
     }
   }
 
