@@ -379,6 +379,11 @@ static inline bool xr_ptrace_tracer_hang_thread(xr_tracer_t *tracer, pid_t pid,
 
 #define XR_WEVENT(status) (XR_WIFEVENT(status) ? ((status) >> 16) : 0)
 
+#define CLONE_FLAG_ARGS(syscall) 1
+#ifndef CLONE_UNTRACED
+#define CLONE_UNTRACED 0x00800000
+#endif
+
 bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
   struct rusage ru;
   int status;
@@ -499,6 +504,11 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     } else if (XR_IS_CLONE(trap->syscall_info.syscall) &&
                trap->thread->syscall_status == XR_THREAD_CALLIN) {
       trap->thread->to_call = trap->syscall_info.syscall;
+      int flag_args = CLONE_FLAG_ARGS(trap->syscall_info.syscall);
+      long clong_flag = trap->syscall_info.args[flag_args];
+      xr_ptrace_tracer_poke_syscall(trap->thread->tid,
+                                    (clong_flag & (~CLONE_UNTRACED)), flag_args,
+                                    trap->thread->process->compat);
     }
   }
 
