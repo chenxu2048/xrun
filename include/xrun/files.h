@@ -86,12 +86,19 @@ static inline void xr_file_set_create(xr_file_set_t *fset) {
   xr_list_init(&fset->data->files);
 }
 
+static inline void xr_file_set_init(xr_file_set_t *fset) {
+  fset->data = NULL;
+}
+
 /**
  * Delete file set content.
  *
  * @@fset
  */
 static inline void xr_file_set_delete(xr_file_set_t *fset) {
+  if (fset->data == NULL) {
+    return;
+  }
   fset->data->own--;
   if (fset->data->own != 0) {
     fset->data = NULL;
@@ -227,6 +234,10 @@ static inline void xr_fs_create(xr_fs_t *fs) {
   xr_string_zero(&fs->data->pwd);
 }
 
+static inline void xr_fs_init(xr_fs_t *fs) {
+  fs->data = NULL;
+}
+
 static inline void xr_fs_share(xr_fs_t *fs, xr_fs_t *sfs) {
   fs->data->own++;
   sfs->data = fs->data;
@@ -244,6 +255,9 @@ static inline void xr_fs_own(xr_fs_t *fs) {
 }
 
 static inline void xr_fs_delete(xr_fs_t *fs) {
+  if (fs->data == NULL) {
+    return;
+  }
   fs->data->own--;
   if (fs->data->own != 0) {
     fs->data = NULL;

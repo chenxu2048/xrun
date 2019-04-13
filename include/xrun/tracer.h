@@ -47,8 +47,6 @@ struct xr_trace_trap_syscall_s {
 
   long args[7];
   long retval;
-
-  xr_thread_t *clone_caller;
 };
 
 struct xr_trace_trap_s {

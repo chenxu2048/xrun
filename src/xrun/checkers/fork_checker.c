@@ -80,7 +80,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
   }
 
   xr_thread_t *thread = trap->thread;
-  xr_thread_t *caller = trap->syscall_info.clone_caller;
+  xr_thread_t *caller = trap->thread->from;
 
   // clone files
   xr_file_set_share(&caller->fset, &thread->fset);
@@ -103,6 +103,7 @@ bool xr_fork_checker_check(xr_checker_t *checker, xr_tracer_t *tracer,
     xr_process_remove_thread(thread->process, thread);
     thread->process = _XR_NEW(xr_process_t);
     xr_process_init(thread->process);
+    thread->process->pid = thread->tid;
     xr_list_add(&tracer->processes, &thread->process->processes);
     xr_process_add_thread(thread->process, thread);
     tracer->nprocess++;

@@ -33,6 +33,10 @@ struct xr_thread_s {
 
   xr_process_t *process;
   xr_list_t threads;
+  union {
+    xr_thread_t *from;
+    long to_call;
+  };
 };
 
 static inline void xr_process_add_thread(xr_process_t *process,
@@ -58,6 +62,9 @@ static inline void xr_process_init(xr_process_t *process) {
 }
 static inline void xr_thread_init(xr_thread_t *thread) {
   xr_list_init(&thread->threads);
+  xr_file_set_init(&thread->fset);
+  xr_fs_init(&thread->fs);
+  thread->syscall_status = XR_THREAD_CALLIN;
   thread->tid = 0;
 }
 void xr_process_delete(xr_process_t *process);
