@@ -7,11 +7,11 @@
 
 #define XRN_CONFIG_PARSE_ERROR_BUFFER 64
 
-#define XRN_CONFIG_SIGN_IF_NOT_ZERO(name, val) \
-  do {                                         \
-    if ((name) != 0) {                         \
-      name = val;                              \
-    }                                          \
+#define XRN_CONFIG_SIGN_IF_ZERO(name, val) \
+  do {                                     \
+    if ((name) == 0) {                     \
+      name = val;                          \
+    }                                      \
   } while (0)
 
 bool xrn_config_access_validate(xr_json_t *access, const char *json_path,
@@ -179,8 +179,8 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
       xr_string_format(error, "config.memory must be greater than 0.");
       return __xrn_parse_failed(cfg_json);
     }
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.memory, v);
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.memory, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit.memory, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit_per_process.memory, v);
   }
 
   xr_json_t *process = xr_json_get(cfg_json, "s", "process");
@@ -194,7 +194,7 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
       xr_string_format(error, "config.process must be greater than 0.");
       return __xrn_parse_failed(cfg_json);
     }
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->nprocess, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->nprocess, v);
   }
 
   xr_json_t *nfile = xr_json_get(cfg_json, "s", "nfile");
@@ -208,8 +208,8 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
       xr_string_format(error, "config.nfile must be greater than 0.");
       return __xrn_parse_failed(cfg_json);
     }
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.nfile, v);
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.nfile, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit.nfile, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit_per_process.nfile, v);
   }
 
   xr_json_t *time_limit = xr_json_get(cfg_json, "s", "time");
@@ -223,10 +223,10 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
       xr_string_format(error, "config.time must be greater than 0.");
       return __xrn_parse_failed(cfg_json);
     }
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.time.sys_time, v);
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.time.sys_time, v);
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.time.user_time, v);
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.time.user_time, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit.time.sys_time, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit_per_process.time.sys_time, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit.time.user_time, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit_per_process.time.user_time, v);
   }
 
   xr_json_t *thread = xr_json_get(cfg_json, "s", "thread");
@@ -240,8 +240,8 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
       xr_string_format(error, "config.thread must be greater than 0.");
       return __xrn_parse_failed(cfg_json);
     }
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit.nthread, v);
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->limit_per_process.nthread, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit.nthread, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->limit_per_process.nthread, v);
   }
 
   xr_json_t *nfork = xr_json_get(cfg_json, "s", "fork");
@@ -255,7 +255,7 @@ bool xrn_config_parse(const char *config_path, xr_option_t *option,
       xr_string_format(error, "config.fork must be greater than 0.");
       return __xrn_parse_failed(cfg_json);
     }
-    XRN_CONFIG_SIGN_IF_NOT_ZERO(option->nprocess, v);
+    XRN_CONFIG_SIGN_IF_ZERO(option->nprocess, v);
   }
 
   xr_json_free(cfg_json);

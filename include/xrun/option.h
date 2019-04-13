@@ -138,7 +138,7 @@ static inline void xr_option_init(xr_option_t *option) {
   } while (0)
 
 static inline void xr_option_default(xr_option_t *option) {
-  XR_OPTION_DEFAULT_IF_ZERO(option->nprocess, XR_NPROC_UNLIMITED);
+  XR_OPTION_DEFAULT_IF_ZERO(option->nprocess, 1);
   XR_OPTION_LIMIT_DEFAULT(&option->limit);
   XR_OPTION_LIMIT_DEFAULT(&option->limit_per_process);
   option->access_trigger = XR_ACCESS_TRIGGER_MODE_IN;
