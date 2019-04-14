@@ -107,7 +107,7 @@ static inline void xr_path_abs(xr_path_t *path) {
     prev_slash = i;
   }
   path->string[abs_end] = 0;
-  path->length = abs_end;
+  path->length = abs_end - 1;
 }
 
 #endif
