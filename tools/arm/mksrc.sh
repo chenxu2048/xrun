@@ -16,6 +16,13 @@ grep -E "^[0-9A-Fa-fXx]+[[:space:]]+" "$IN" | sort -n | (
     name_upper=$(echo ${name} | tr 'a-z' 'A-Z')
     echo "  [XR_SYSCALL_${name_upper}] = \"$name\","
   done
+
+  echo "[XR_SYSCALL_BREAKPOINT] = \"breakpoint\","
+  echo "[XR_SYSCALL_CACHEFLUSH] = \"cacheflush\","
+  echo "[XR_SYSCALL_USR26] = \"usr26\","
+  echo "[XR_SYSCALL_USR32] = \"usr32\","
+  echo "[XR_SYSCALL_SET_TLS] = \"set_tls\","
+  echo "[XR_SYSCALL_GET_TLS] = \"get_tls\","
   echo "};"
   echo "#endif"
 ) > "$SOURCE"

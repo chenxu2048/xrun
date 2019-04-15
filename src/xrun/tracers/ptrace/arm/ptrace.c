@@ -24,6 +24,9 @@
 #define XR_ARM_EABI_INST 0xef000000
 #define XR_ARM_OABI_MASK 0x00ffffff
 
+/* define in /arch/arm/kernel/traps.c */
+#define XR_ARM_PRIVATE_CALLS(call) ((call) > 0xf0000 && (call) <= 0xf07ff)
+
 #define XR_ARM_PC (XR_ARM_pc * sizeof(unsigned long int))
 
 static inline int xr_ptrace_tracer_syscall_compat_arm(int pid) {
@@ -60,8 +63,12 @@ static inline bool xr_ptrace_tracer_peek_syscall_arm(
     syscall_info->syscall = xr_syscall_arm_from_oabi(inst & XR_ARM_OABI_MASK);
   }
   syscall_info->retval = regs.uregs[0];
+  if (XR_ARM_PRIVATE_CALLS(syscall_info->syscall)) {
+    syscall_info->syscall =
+      xr_syscall_arm_private_convert(syscall_info->syscall);
+  }
 
-  for (int i = 1; i < 6; ++i) {
+  for (int i = 1; i <= 6; ++i) {
     syscall_info->args[i] = regs.uregs[i];
   }
   syscall_info->args[0] = regs.uregs[17];
