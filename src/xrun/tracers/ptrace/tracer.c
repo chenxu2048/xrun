@@ -379,6 +379,13 @@ static inline bool xr_ptrace_tracer_hang_thread(xr_tracer_t *tracer, pid_t pid,
 
 #define XR_WEVENT(status) (XR_WIFEVENT(status) ? ((status) >> 16) : 0)
 
+#ifdef XR_PTRACESYSGOOD_ENABLE
+#define XR_WIFTRACED(status) \
+  (WIFSTOPPED(status) && WSTOPSIG(status) == (SIGTRAP | 0x80))
+#else
+#define XR_WIFTRACED(status) (WIFSTOPPED(status) && WSTOPSIG(status) == SIGTRAP)
+#endif
+
 #define CLONE_FLAG_ARGS(syscall) 1
 #ifndef CLONE_UNTRACED
 #define CLONE_UNTRACED 0x00800000
@@ -473,9 +480,9 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
     trap->trap = XR_TRACE_TRAP_EXIT;
     trap->exit_code = WEXITSTATUS(status);
   } else if (WIFSIGNALED(status)) {
-    trap->trap = XR_TRACE_TRAP_SIGNAL;
-    trap->stop_signal = WSTOPSIG(status);
-  } else if (WIFSTOPPED(status)) {
+    trap->trap = XR_TRACE_TRAP_SIGEXIT;
+    trap->stop_signal = WTERMSIG(status);
+  } else if (XR_WIFTRACED(status)) {
     trap->trap = XR_TRACE_TRAP_SYSCALL;
     __flip_thread_syscall_status(trap->thread);
 
@@ -505,6 +512,9 @@ bool xr_ptrace_tracer_trap(xr_tracer_t *tracer, xr_trace_trap_t *trap) {
                trap->thread->syscall_status == XR_THREAD_CALLIN) {
       trap->thread->to_call = trap->syscall_info.syscall;
     }
+  } else if (WIFSTOPPED(status)) {
+    trap->trap = XR_TRACE_TRAP_SIGNAL;
+    trap->stop_signal = WSTOPSIG(status);
   }
 
   if (trap->thread->process == NULL) {

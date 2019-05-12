@@ -53,6 +53,7 @@ struct xr_trace_trap_s {
   enum {
     XR_TRACE_TRAP_SYSCALL,
     XR_TRACE_TRAP_SIGNAL,
+    XR_TRACE_TRAP_SIGEXIT,
     XR_TRACE_TRAP_EXIT,
     XR_TRACE_TRAP_NONE
   } trap;
